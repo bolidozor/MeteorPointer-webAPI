@@ -13,6 +13,7 @@ distribuované sítě rádiových stanic pro detekci meteorů a bolidů.
 - [Instalace](#instalace)
 - [Spuštění](#spuštění)
 - [Struktura repozitáře](#struktura-repozitáře)
+- [Související projekty](#související-projekty)
 - [Vývoj](#vývoj)
 - [Licence](#licence)
 
@@ -52,6 +53,16 @@ MeteorPointer-webAPI/
 ├── README.md        # tento soubor
 └── ...              # TODO: zdrojový kód, konfigurace, testy
 ```
+
+## Související projekty
+
+Vývoj tohoto API probíhá v konsolidaci s dalšími repozitáři projektu MeteorPointer:
+
+| Repozitář | Popis |
+|-----------|-------|
+| [MeteorPointer](https://github.com/bolidozor/MeteorPointer) | Mobilní aplikace |
+| **MeteorPointer-webAPI** (tento repozitář) | Webové API / backend |
+| [MeteorPointer-webUI](https://github.com/bolidozor/MeteorPointer-webUI) | Webový frontend k tomuto API |
 
 ## Vývoj
 
