@@ -1,2 +1,13 @@
 # Lokální analytický adresář – nikdy se nepushuje na GitHub
 /Analyza/
+
+# Python
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+*.sqlite3
+
+# Env / secrets
+.env
+

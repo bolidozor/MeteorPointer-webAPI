@@ -1,5 +1,13 @@
 # MeteorPointer-webAPI
 
+[![CI](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/ci.yml/badge.svg)](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/ci.yml)
+[![Release](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/release.yml/badge.svg)](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/release.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-5-092E20?logo=django&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Data license: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-brightgreen)
+
 Webové API pro projekt **MeteorPointer** v rámci sítě [Bolidozor](https://bolidozor.cz) –
 distribuované sítě rádiových stanic pro detekci meteorů a bolidů.
 
@@ -23,35 +31,52 @@ distribuované sítě rádiových stanic pro detekci meteorů a bolidů.
 o detekovaných meteorech – jejich poloze, čase a parametrech pozorování. Slouží jako
 backend, na který se napojují klientské nástroje a vizualizace.
 
+## Technologie
+
+- **Python 3.12 · Django 5 · [django-ninja](https://django-ninja.dev/)** (REST API, auto-OpenAPI)
+- **PostgreSQL 16** (psycopg 3)
+- **Ed25519** identita zařízení · krátkodobé **JWT** · auth bez hesel a e-mailů
+- Nasazení přes **Docker Compose**, image distribuovány přes **GHCR**
+
 ## Požadavky
 
-<!-- TODO: doplnit podle zvoleného technologického stacku -->
+- Docker + Docker Compose (doporučeno), nebo Python 3.12 pro lokální běh
 
-- Git
-- Runtime prostředí dle implementace (např. Python 3.x / Node.js)
-
-## Instalace
+## Spuštění (Docker)
 
 ```bash
 git clone https://github.com/bolidozor/MeteorPointer-webAPI.git
 cd MeteorPointer-webAPI
-# TODO: instalace závislostí
+cp .env.example .env        # uprav tajné klíče
+docker compose up -d
 ```
 
-## Spuštění
+- API: `http://localhost:8000`
+- Health check: `http://localhost:8000/healthz`
+- Interaktivní dokumentace (OpenAPI): `http://localhost:8000/api/docs`
+
+## Testy
 
 ```bash
-# TODO: příkaz pro spuštění vývojového serveru
+docker compose up -d db
+docker compose run --rm --entrypoint pytest api
 ```
-
-API bude standardně dostupné na `http://localhost:8000` (port upřesnit).
 
 ## Struktura repozitáře
 
 ```
 MeteorPointer-webAPI/
-├── README.md        # tento soubor
-└── ...              # TODO: zdrojový kód, konfigurace, testy
+├── backend/
+│   ├── meteorpointer/        # Django projekt (settings, asgi, api root)
+│   └── apps/
+│       ├── devices/          # registrace zařízení (Ed25519), recovery fráze, mazání
+│       ├── auth_api/         # challenge → JWT
+│       ├── ingest/           # bezpečná synchronizace měření (raw landing zone)
+│       └── legal/            # servírování textů souhlasu / licence
+├── docs/legal/               # kanonické texty souhlasu (cs, en)
+├── docker/api/               # Dockerfile + entrypoint
+├── docker-compose.yml
+└── .github/workflows/        # CI (lint + test) a release (build → GHCR)
 ```
 
 ## Související projekty
@@ -74,7 +99,8 @@ Příspěvky jsou vítány. Doporučený postup:
 
 ## Licence
 
-<!-- TODO: doplnit licenci (např. MIT) -->
+Naměřená pozorovací data jsou uvolňována pod **CC0 1.0** (public domain) — viz
+[`docs/legal/`](docs/legal/). Licence zdrojového kódu bude doplněna.
 
 ---
 
