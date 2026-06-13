@@ -1,5 +1,13 @@
 # MeteorPointer-webAPI
 
+[![CI](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/ci.yml/badge.svg)](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/ci.yml)
+[![Release](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/release.yml/badge.svg)](https://github.com/bolidozor/MeteorPointer-webAPI/actions/workflows/release.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-5-092E20?logo=django&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Data license: CC0-1.0](https://img.shields.io/badge/data-CC0--1.0-brightgreen)
+
 Webové API pro projekt **MeteorPointer** v rámci sítě [Bolidozor](https://bolidozor.cz) –
 distribuované sítě rádiových stanic pro detekci meteorů a bolidů.
 
