@@ -55,6 +55,32 @@ docker compose up -d
 - Health check: `http://localhost:8000/healthz`
 - Interaktivní dokumentace (OpenAPI): `http://localhost:8000/api/docs`
 
+## Nasazení — dva scénáře (jeden `.env`)
+
+Oba čtou stejný `.env`; každý compose soubor má v hlavičce popis i postup. Proměnné
+specifické pro daný scénář jsou v `.env` v komentovaných sekcích.
+
+### A) Vlastní reverzní proxy řeší TLS — `docker-compose.prod.yml`
+Máš vlastní proxy (NAS / čelní server), která drží HTTPS certifikát a přeposílá na
+tenhle stack. Stack běží na HTTP.
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+V proxy nasměruj `https://api.robozor.cz` → tento stroj, port 8000.
+**Adresa do mobilní aplikace:** `https://api.robozor.cz`
+
+### B) TLS řeší tenhle stack, s automatickou obnovou — `docker-compose.tls.yml`
+Nemáš vlastní proxy a chceš, aby si stack certifikát **sám pořídil a obnovoval**.
+Potřebuje veřejnou doménu mířící na tento server a dostupné porty 80 a 443.
+```bash
+# v .env: DOMAIN=api.robozor.cz  a  ACME_EMAIL=tvuj@email
+docker compose -f docker-compose.tls.yml up -d
+```
+**Adresa do mobilní aplikace:** `https://api.robozor.cz`
+
+> Rychlá lokální kontrola bez domény: `DOMAIN=localhost` a prázdné `ACME_EMAIL`
+> dají self-signed certifikát na `https://localhost` (prohlížeč varuje — očekávané).
+
 ## Testy
 
 ```bash

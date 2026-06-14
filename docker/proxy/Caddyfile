@@ -1,0 +1,29 @@
+# MeteorPointer reverse proxy — hostname-routed HTTPS.
+#
+# Routes by Host header, so this proxy can share a machine with other stacks as
+# long as it binds a host IP/port that isn't already taken (see PROXY_HTTP /
+# PROXY_HTTPS in docker-compose.tls.yml).
+#
+# {$DOMAIN}  — the hostname to serve, e.g. api.bolidozor.cz (or localhost).
+# {$TLS_ARG} — "internal" for a local self-signed cert (no public reachability
+#              needed), or an ACME e-mail (you@example.org) to get auto-renewed
+#              Let's Encrypt certs. Driven by ACME_EMAIL (empty => internal).
+#
+# Certs/account live in the caddy_data volume, so renewals survive restarts.
+
+{$DOMAIN} {
+	encode gzip
+	tls {$TLS_ARG}
+
+	# --- API ---
+	@api path /v1/* /healthz /api/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	# --- Web frontend (added later) ---
+	# When MeteorPointer-FE exists: handle { reverse_proxy fe:80 }
+	handle {
+		reverse_proxy api:8000
+	}
+}
