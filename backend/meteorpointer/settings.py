@@ -79,6 +79,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "apps.web.middleware.NoStoreWebMiddleware",
 ]
 
 ROOT_URLCONF = "meteorpointer.urls"

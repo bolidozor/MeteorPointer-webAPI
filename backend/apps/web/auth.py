@@ -25,4 +25,8 @@ class WebSessionAuth(APIKeyCookie):
         return session
 
 
-web_auth = WebSessionAuth()
+# csrf=False: the session cookie is SameSite=Lax (it blocks cross-site POSTs, so
+# it already provides CSRF protection) and the cross-origin frontend cannot read
+# a Django CSRF token anyway. Without this, cookie-authed POSTs (e.g. logout)
+# are rejected with "CSRF check Failed".
+web_auth = WebSessionAuth(csrf=False)
