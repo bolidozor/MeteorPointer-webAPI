@@ -1,23 +1,25 @@
-// MeteorSky — a self-contained, navigable local-sky view of a single meteor.
+// MeteorSky — a self-contained panorama view of the sky for one meteor.
 //
 // No external service or API: the star catalogue and constellation data are
 // static JSON we host (vendor/celestial/data/, Hipparcos + IAU). Everything is
 // computed and drawn (SVG) in the browser.
 //
-// The sky is shown as it looked from the observing site at the event instant.
-// It is a real planetarium-style view: a gnomonic (rectilinear) camera looks
-// toward a (azimuth, altitude) direction with a field of view. Dragging rotates
-// the look direction (the sky and the cardinal marks scroll; the panel stays
-// put); the wheel / buttons change the field of view (zoom out reveals more
-// sky). An alt-azimuth grid (meridians + almucantars) and the horizon with
-// cardinal directions are drawn; the meteor trail is green (start) -> red (end).
+// The sky is shown as a horizontal PANORAMA from the observing site at the
+// event instant: x = azimuth, y = altitude. The horizon is a fixed horizontal
+// line (always in the same place), the ground below it is shaded. Dragging (or
+// the buttons) only turns you left/right — the azimuth scrolls, the cardinal
+// marks slide along the fixed horizon — exactly like turning your head. The
+// wheel / +/- zoom the field of view around the horizon. No other transforms.
+// Meridians are vertical lines (constant azimuth), almucantars horizontal
+// (constant altitude). The meteor trail is green (start) -> red (end).
 (function (global) {
   'use strict';
   var D2R = Math.PI / 180, R2D = 180 / Math.PI;
 
   var dataPromise = null, dataCache = null;
   var model = null;   // per-measurement alt/az geometry
-  var view = null;    // { az, alt, fov } look direction + field of view (deg)
+  var view = null;    // { az: center azimuth (deg), ppd: pixels per degree }
+  var baseppd = 1;
 
   function loadData() {
     if (!dataPromise) {
@@ -59,10 +61,6 @@
     var x = Math.cos(a * D2R) + Math.cos(b * D2R), y = Math.sin(a * D2R) + Math.sin(b * D2R);
     return ((Math.atan2(y, x) * R2D) % 360 + 360) % 360;
   }
-  function vec(alt, az) {
-    var a = alt * D2R, z = az * D2R;
-    return [Math.sin(z) * Math.cos(a), Math.cos(z) * Math.cos(a), Math.sin(a)]; // ENU
-  }
 
   var CARDINALS = [
     { key: 'N', az: 0 }, { key: 'NE', az: 45 }, { key: 'E', az: 90 }, { key: 'SE', az: 135 },
@@ -72,109 +70,90 @@
   function constName(p) { var k = (global.MPI18n && global.MPI18n.lang === 'en') ? 'en' : 'cz'; return p[k] || p.en || p.name || ''; }
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-  // Build the alt/az geometry for a measurement (independent of the view).
   function build(detail, data) {
     var lst = lstDeg(new Date(detail.event_utc), detail.lon), lat = detail.lat;
     var aa = function (ra, dec) { return radecToAltaz(ra, dec, lat, lst); };
-
-    var stars = data.stars.map(function (s) { var p = aa(s.ra, s.dec); return { alt: p.alt, az: p.az, mag: s.mag }; });
-    var lines = data.lines.map(function (ls) { return ls.map(function (pt) { var p = aa(pt[0], pt[1]); return [p.alt, p.az]; }); });
-    var names = data.names.map(function (n) { var p = aa(n.ra, n.dec); return { alt: p.alt, az: p.az, props: n.props }; });
-
-    // alt-az grid
-    var meridians = [], almucantars = [];
-    for (var mz = 0; mz < 360; mz += 30) { var m = []; for (var ma = 0; ma <= 88; ma += 4) m.push([ma, mz]); meridians.push(m); }
-    [30, 60].forEach(function (al) { var c = []; for (var az = 0; az <= 360; az += 4) c.push([al, az]); almucantars.push(c); });
-    var horizon = []; for (var hz = 0; hz <= 360; hz += 2) horizon.push([0, hz]);
-
     model = {
-      stars: stars, lines: lines, names: names,
-      meridians: meridians, almucantars: almucantars, horizon: horizon,
+      stars: data.stars.map(function (s) { var p = aa(s.ra, s.dec); return { alt: p.alt, az: p.az, mag: s.mag }; }),
+      lines: data.lines.map(function (ls) { return ls.map(function (pt) { var p = aa(pt[0], pt[1]); return [p.alt, p.az]; }); }),
+      names: data.names.map(function (n) { var p = aa(n.ra, n.dec); return { alt: p.alt, az: p.az, props: n.props }; }),
       start: { alt: detail.start.alt, az: detail.start.az },
       end: { alt: detail.end.alt, az: detail.end.az },
       centerAz: meanAz(detail.start.az, detail.end.az),
-      centerAlt: Math.max(22, Math.min(55, (detail.start.alt + detail.end.alt) / 2)),
     };
   }
 
-  function camera(W, H) {
-    var f = vec(view.alt, view.az);
-    var r = [f[1], -f[0], 0]; var rn = Math.hypot(r[0], r[1]) || 1e-6; r = [r[0] / rn, r[1] / rn, 0];
-    var u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
-    var foc = (H / 2) / Math.tan(view.fov / 2 * D2R);
-    return { f: f, r: r, u: u, foc: foc, cx: W / 2, cy: H / 2 };
+  // geometry of the panorama for the current panel size
+  function geom() {
+    var host = document.getElementById('skymap');
+    var W = host.clientWidth || 600, H = host.clientHeight || 400;
+    return { W: W, H: H, cx: W / 2, horizonY: Math.round(H * 0.86) };
   }
-  function proj(alt, az, C) {
-    var p = vec(alt, az);
-    var zc = p[0] * C.f[0] + p[1] * C.f[1] + p[2] * C.f[2];
-    if (zc <= 0.05) return null;
-    var xc = p[0] * C.r[0] + p[1] * C.r[1] + p[2] * C.r[2];
-    var yc = p[0] * C.u[0] + p[1] * C.u[1] + p[2] * C.u[2];
-    return [C.cx + C.foc * xc / zc, C.cy - C.foc * yc / zc];
-  }
-  function polylines(coords, C) {
-    // project a list of [alt,az], splitting into screen polylines at culled pts
-    var segs = [], cur = [];
-    for (var i = 0; i < coords.length; i++) {
-      var s = proj(coords[i][0], coords[i][1], C);
-      if (s) cur.push(s.map(function (n) { return n.toFixed(1); }).join(',')); else { if (cur.length > 1) segs.push(cur); cur = []; }
-    }
-    if (cur.length > 1) segs.push(cur);
-    return segs;
-  }
+  function adiff(az, c) { return ((az - c + 540) % 360) - 180; }       // -180..180
 
   function paint() {
     var host = document.getElementById('skymap');
     if (!host || !model) return;
-    var W = host.clientWidth || 600, H = host.clientHeight || 400;
-    var C = camera(W, H);
-    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block"><rect x="0" y="0" width="' + W + '" height="' + H + '" fill="#070710"/>';
+    var g = geom(), W = g.W, H = g.H, cx = g.cx, hy = g.horizonY, ppd = view.ppd, c = view.az;
+    var halfAz = (W / 2) / ppd + 8; // visible azimuth half-width (deg) + margin
+    var px = function (alt, az) { return [cx + adiff(az, c) * ppd, hy - alt * ppd]; };
+    var vis = function (az) { return Math.abs(adiff(az, c)) <= halfAz; };
 
-    // ground (below the horizon great circle, which is a straight line in gnomonic)
-    var hpts = [];
-    model.horizon.forEach(function (c) { var s = proj(c[0], c[1], C); if (s) hpts.push(s); });
-    hpts.sort(function (a, b) { return a[0] - b[0]; });
-    if (hpts.length > 1) {
-      var poly = hpts.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
-      svg += '<polygon points="' + poly + ' ' + W + ',' + H + ' 0,' + H + '" fill="#0c0608"/>';
+    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block">';
+    svg += '<rect x="0" y="0" width="' + W + '" height="' + hy + '" fill="#070710"/>';                 // sky
+    svg += '<rect x="0" y="' + hy + '" width="' + W + '" height="' + (H - hy) + '" fill="#0c0608"/>';   // ground
+
+    // almucantars (constant altitude -> horizontal lines)
+    [30, 60].forEach(function (al) {
+      var y = (hy - al * ppd).toFixed(1);
+      svg += '<line x1="0" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="#20202f" stroke-width="1" opacity="0.55"/>';
+    });
+    // meridians (constant azimuth -> vertical lines), every 15 deg
+    for (var mz = 0; mz < 360; mz += 15) {
+      if (!vis(mz)) continue;
+      var x = (cx + adiff(mz, c) * ppd).toFixed(1);
+      var major = (mz % 90 === 0);
+      svg += '<line x1="' + x + '" y1="' + (hy - 90 * ppd).toFixed(1) + '" x2="' + x + '" y2="' + hy + '" stroke="' + (major ? '#2c2c42' : '#20202f') + '" stroke-width="1" opacity="0.6"/>';
     }
 
-    // alt-az grid: meridians + almucantars
-    model.meridians.forEach(function (m) { polylines(m, C).forEach(function (sg) { svg += '<polyline points="' + sg.join(' ') + '" fill="none" stroke="#23233a" stroke-width="1" opacity="0.6"/>'; }); });
-    model.almucantars.forEach(function (m) { polylines(m, C).forEach(function (sg) { svg += '<polyline points="' + sg.join(' ') + '" fill="none" stroke="#23233a" stroke-width="1" opacity="0.5"/>'; }); });
-
-    // constellation lines
-    model.lines.forEach(function (ls) { polylines(ls, C).forEach(function (sg) { svg += '<polyline points="' + sg.join(' ') + '" fill="none" stroke="#3b6ea5" stroke-width="1" opacity="0.6"/>'; }); });
-
-    // stars (sky only: above horizon)
-    model.stars.forEach(function (st) {
-      if (st.alt < 0) return;
-      var s = proj(st.alt, st.az, C); if (!s) return;
-      var r = Math.max(0.5, (6.2 - st.mag) * 0.42);
-      svg += '<circle cx="' + s[0].toFixed(1) + '" cy="' + s[1].toFixed(1) + '" r="' + r.toFixed(1) + '" fill="#eef0ff" opacity="' + Math.min(1, 0.35 + (6 - st.mag) * 0.13).toFixed(2) + '"/>';
+    // constellation lines (split where the azimuth seam would draw a long jump)
+    model.lines.forEach(function (ls) {
+      var cur = [], prevX = null;
+      for (var i = 0; i < ls.length; i++) {
+        var alt = ls[i][0], az = ls[i][1];
+        if (alt < -3 || !vis(az)) { if (cur.length > 1) svg += poly(cur); cur = []; prevX = null; continue; }
+        var p = px(alt, az);
+        if (prevX !== null && Math.abs(p[0] - prevX) > W * 0.5) { if (cur.length > 1) svg += poly(cur); cur = []; }
+        cur.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); prevX = p[0];
+      }
+      if (cur.length > 1) svg += poly(cur);
     });
 
+    // stars (above horizon)
+    model.stars.forEach(function (st) {
+      if (st.alt < 0 || !vis(st.az)) return;
+      var p = px(st.alt, st.az), r = Math.max(0.5, (6.2 - st.mag) * 0.42);
+      svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + r.toFixed(1) + '" fill="#eef0ff" opacity="' + Math.min(1, 0.35 + (6 - st.mag) * 0.13).toFixed(2) + '"/>';
+    });
     // constellation names
     model.names.forEach(function (nm) {
-      if (nm.alt < -2) return;
-      var s = proj(nm.alt, nm.az, C); if (!s) return;
-      svg += '<text x="' + s[0].toFixed(1) + '" y="' + s[1].toFixed(1) + '" fill="#9fb6d6" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif" opacity="0.85">' + esc(constName(nm.props)) + '</text>';
+      if (nm.alt < -2 || !vis(nm.az)) return;
+      var p = px(nm.alt, nm.az);
+      svg += '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" fill="#9fb6d6" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif" opacity="0.85">' + esc(constName(nm.props)) + '</text>';
     });
 
-    // horizon line
-    if (hpts.length > 1) {
-      svg += '<polyline points="' + hpts.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ') + '" fill="none" stroke="#ff5a5a" stroke-width="1.8"/>';
-    }
-    // cardinal direction marks (just above the horizon, scroll with the view)
-    CARDINALS.forEach(function (c) {
-      var s = proj(1.2, c.az, C); if (!s) return;
-      if (s[0] < 0 || s[0] > W || s[1] < 0 || s[1] > H) return;
-      svg += '<text x="' + s[0].toFixed(1) + '" y="' + s[1].toFixed(1) + '" fill="#ffb0b0" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">' + esc(dirLabel(c.key)) + '</text>';
+    // horizon line (fixed) + cardinal marks sliding along it
+    svg += '<line x1="0" y1="' + hy + '" x2="' + W + '" y2="' + hy + '" stroke="#ff5a5a" stroke-width="1.8"/>';
+    CARDINALS.forEach(function (cd) {
+      if (!vis(cd.az)) return;
+      var x = cx + adiff(cd.az, c) * ppd;
+      svg += '<line x1="' + x.toFixed(1) + '" y1="' + (hy - 7) + '" x2="' + x.toFixed(1) + '" y2="' + (hy + 7) + '" stroke="#ff7a7a" stroke-width="1.5"/>';
+      svg += '<text x="' + x.toFixed(1) + '" y="' + (hy + 24) + '" fill="#ffb0b0" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">' + esc(dirLabel(cd.key)) + '</text>';
     });
 
     // meteor trail
-    var a = proj(model.start.alt, model.start.az, C), b = proj(model.end.alt, model.end.az, C);
-    if (a && b) {
+    if (vis(model.start.az) || vis(model.end.az)) {
+      var a = px(model.start.alt, model.start.az), b = px(model.end.alt, model.end.az);
       svg += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#ff3b3b" stroke-width="2.5" stroke-linecap="round"/>';
       svg += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="5" fill="#5dff5d"/>';
       svg += '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="5" fill="#ff3b3b"/>';
@@ -182,31 +161,29 @@
     svg += '</svg>';
     host.innerHTML = svg;
   }
+  function poly(pts) { return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#3b6ea5" stroke-width="1" opacity="0.6"/>'; }
 
   var raf = false;
   function schedule() { if (raf) return; raf = true; requestAnimationFrame(function () { raf = false; paint(); }); }
 
   function resetView() {
-    view = { az: model.centerAz, alt: model.centerAlt, fov: 100 };
+    var g = geom();
+    baseppd = (g.horizonY * 0.96) / 92;   // default: horizon..zenith fits above the line
+    view = { az: model.centerAz, ppd: baseppd };
   }
+  function zoom(factor) { view.ppd = Math.max(baseppd * 0.6, Math.min(baseppd * 8, view.ppd * factor)); }
 
   function bind(host) {
     if (host._mpBound) return; host._mpBound = true;
     host.style.cursor = 'grab';
-    host.addEventListener('wheel', function (e) {
-      e.preventDefault();
-      view.fov = Math.max(12, Math.min(150, view.fov * (e.deltaY < 0 ? 1 / 1.12 : 1.12)));
-      schedule();
-    }, { passive: false });
-    var drag = false, lx = 0, ly = 0;
-    host.addEventListener('mousedown', function (e) { drag = true; lx = e.clientX; ly = e.clientY; host.style.cursor = 'grabbing'; });
+    host.addEventListener('wheel', function (e) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12); schedule(); }, { passive: false });
+    var drag = false, lx = 0;
+    host.addEventListener('mousedown', function (e) { drag = true; lx = e.clientX; host.style.cursor = 'grabbing'; });
     global.addEventListener('mousemove', function (e) {
       if (!drag || !view) return;
-      var H = host.clientHeight || 400, perPx = view.fov / H;
-      view.az -= (e.clientX - lx) * perPx / Math.max(0.4, Math.cos(view.alt * D2R));
-      view.alt = Math.max(-25, Math.min(85, view.alt + (e.clientY - ly) * perPx));
-      view.az = ((view.az % 360) + 360) % 360;
-      lx = e.clientX; ly = e.clientY; schedule();
+      // horizontal only: turn left/right (azimuth). Horizon stays fixed.
+      view.az = ((view.az - (e.clientX - lx) / view.ppd) % 360 + 360) % 360;
+      lx = e.clientX; schedule();
     });
     global.addEventListener('mouseup', function () { drag = false; host.style.cursor = 'grab'; });
     host.addEventListener('dblclick', function () { resetView(); paint(); });
@@ -227,13 +204,12 @@
   function refit() { if (model) { resetView(); paint(); } }
 
   var rt = null;
-  global.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(redraw, 150); });
+  global.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(refit, 150); });
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-zoom]'); if (!b || !view) return;
     var act = b.getAttribute('data-zoom');
-    if (act === 'reset') { refit(); return; }
-    view.fov = Math.max(12, Math.min(150, view.fov * (act === 'in' ? 0.8 : 1.25)));
-    paint();
+    if (act === 'reset') refit();
+    else { zoom(act === 'in' ? 1.3 : 1 / 1.3); paint(); }
   });
 
   global.MeteorSky = { render: render, redraw: redraw, refit: refit, _detail: null };
