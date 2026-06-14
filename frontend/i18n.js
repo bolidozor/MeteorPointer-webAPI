@@ -25,6 +25,7 @@
         loadFail: 'Detail měření se nepodařilo načíst.',
         noCoords: 'Měření nemá GPS souřadnice nebo čas — stopu na obloze nelze vykreslit.',
         startLabel: 'Start', endLabel: 'Konec',
+        hint: 'Kolečkem přiblížíš, tažením posuneš, dvojklikem resetuješ pohled.',
       },
       dir: { N: 'S', NE: 'SV', E: 'V', SE: 'JV', S: 'J', SW: 'JZ', W: 'Z', NW: 'SZ' },
       about_box: {
@@ -34,7 +35,7 @@
         coordsH: 'Souřadnice a čas',
         coords: 'Stopa meteoru je zaznamenána jako dva směry (výška/azimut) v okamžiku měření. Rovníkové souřadnice (RA/Dek) pro vykreslení na obloze počítá server uzavřeným převodem. Čas události je absolutní UTC; lokální čas v místě pozorování se odvozuje z GPS polohy a časového pásma.',
         close: 'Zavřít',
-        liStars: 'Katalog hvězd — Hipparcos (ESA); názvy a čáry souhvězdí dle <b>IAU</b>; obrys Mléčné dráhy.',
+        liStars: 'Data hvězd a souhvězdí — Hipparcos (ESA) a názvy/čáry dle <b>IAU</b>, ve formě datové sady projektu <b>d3-celestial</b> (© 2015 Olaf Frohn, licence <b>BSD-3-Clause</b>). Používáme pouze tato data, nikoli samotnou knihovnu.',
         liSegno: '<b>segno</b> — generování QR kódů (server). Licence <b>BSD</b>.',
         liTz: '<b>timezonefinder</b> — určení časového pásma místa (server). Licence <b>MIT</b>; hranice pásem © přispěvatelé <b>OpenStreetMap</b>, licence <b>ODbL</b>.',
         liDjango: '<b>Django</b> (BSD) &amp; <b>django-ninja</b> (MIT) — serverový framework API.',
@@ -60,6 +61,7 @@
         loadFail: 'Could not load the measurement detail.',
         noCoords: 'This measurement has no GPS location or time — the trail cannot be drawn.',
         startLabel: 'Start', endLabel: 'End',
+        hint: 'Scroll to zoom, drag to pan, double-click to reset the view.',
       },
       dir: { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SW: 'SW', W: 'W', NW: 'NW' },
       about_box: {
@@ -69,7 +71,7 @@
         coordsH: 'Coordinates and time',
         coords: 'A meteor trail is recorded as two directions (altitude/azimuth) at the moment of measurement. The equatorial coordinates (RA/Dec) for plotting are computed on the server by a closed-form conversion. The event time is absolute UTC; the local civil time at the observing site is derived from the GPS location and time zone.',
         close: 'Close',
-        liStars: 'Star catalogue — Hipparcos (ESA); constellation names and lines per <b>IAU</b>; Milky Way outline.',
+        liStars: 'Star &amp; constellation data — Hipparcos (ESA) and <b>IAU</b> names/lines, as the dataset shipped by the <b>d3-celestial</b> project (© 2015 Olaf Frohn, <b>BSD-3-Clause</b>). We use only this data, not the library itself.',
         liSegno: '<b>segno</b> — QR code generation (server). <b>BSD</b> license.',
         liTz: '<b>timezonefinder</b> — site time-zone lookup (server). <b>MIT</b> license; zone boundaries © <b>OpenStreetMap</b> contributors, <b>ODbL</b>.',
         liDjango: '<b>Django</b> (BSD) &amp; <b>django-ninja</b> (MIT) — server API framework.',

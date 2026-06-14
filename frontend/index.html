@@ -46,9 +46,11 @@
       #app { flex: 1; min-height: 0; display: flex; }
       .col-grid { flex: none; max-width: 60%; overflow: auto; border-right: 1px solid #26262e; }
       .grid-inner { padding: 16px 20px; }
-      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
       .sky-head { flex: none; padding: 12px 20px; font-size: 12px; color: #9a9aa6; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1c1c24; }
-      #skymap { flex: 1; min-height: 0; width: 100%; }
+      #skymap { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+      .sky-zoom { position: absolute; top: 46px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+      .sky-zoom button { width: 34px; height: 34px; padding: 0; font-size: 18px; line-height: 1; opacity: 0.9; }
       .sky-foot { flex: none; padding: 12px 20px; border-top: 1px solid #1c1c24; }
       .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 8px; }
       .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
@@ -123,6 +125,11 @@
         </div>
         <div class="col-sky">
           <div class="sky-head" data-i18n="sky.head">Obloha v čase a místě měření</div>
+          <div class="sky-zoom">
+            <button data-zoom="in" title="+">+</button>
+            <button data-zoom="out" title="−">−</button>
+            <button data-zoom="reset" title="reset">⟳</button>
+          </div>
           <div id="skymap"></div>
           <div class="sky-foot">
             <div class="legend">
@@ -130,6 +137,7 @@
               <span><span class="dot end"></span><span data-i18n="sky.end">konec stopy</span></span>
             </div>
             <div class="sky-caption muted" id="skyCaption" data-i18n="sky.pick"></div>
+            <div class="muted" style="font-size:11px;margin-top:6px;opacity:.7" data-i18n="sky.hint"></div>
           </div>
         </div>
       </div>
@@ -143,9 +151,6 @@
         <h3 data-i18n="about_box.compH"></h3>
         <p data-i18n="about_box.compIntro"></p>
         <ul>
-          <li><b>d3-celestial</b> — © 2015 Olaf Frohn. <b>BSD-3-Clause</b>.
-            <a href="https://github.com/ofrohn/d3-celestial" target="_blank" rel="noopener">github.com/ofrohn/d3-celestial</a></li>
-          <li><b>D3.js</b> — © Mike Bostock. <b>BSD-3-Clause</b>. <a href="https://d3js.org" target="_blank" rel="noopener">d3js.org</a></li>
           <li data-i18n-html="about_box.liStars"></li>
           <li data-i18n-html="about_box.liSegno"></li>
           <li data-i18n-html="about_box.liTz"></li>
