@@ -82,7 +82,10 @@ def device_code(request):
 def qr(request, data: str):
     """SVG QR code for a sign-in user_code, so the mobile app can scan it."""
     buf = io.BytesIO()
-    segno.make(data, error="m").save(buf, kind="svg", scale=6, border=2)
+    # High error correction + a full 4-module quiet zone make the code far
+    # easier to decode off a glowing screen (tolerates blur, glare, slight
+    # defocus). The user_code is short, so 'h' adds negligible density.
+    segno.make(data, error="h").save(buf, kind="svg", scale=8, border=4)
     return HttpResponse(buf.getvalue(), content_type="image/svg+xml")
 
 
