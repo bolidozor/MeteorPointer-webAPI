@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeteorPointer — sky render test</title>
+    <link rel="stylesheet" href="vendor/celestial/celestial.css" />
+    <style>
+      body { background: #0a0a14; color: #e6e6ea; font-family: system-ui, sans-serif; margin: 0; }
+      #skymap { width: 480px; margin: 20px auto; }
+      p { text-align: center; }
+      #celestial-form { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <p>Standalone render test (real parsed RA/Dec, no login).</p>
+    <div id="skymap"></div>
+    <script src="vendor/celestial/d3.min.js"></script>
+    <script src="vendor/celestial/d3.geo.projection.min.js"></script>
+    <script src="vendor/celestial/celestial.min.js"></script>
+    <script src="sky.js"></script>
+    <script>
+      // A real parsed measurement from the Czech site.
+      var ok = MeteorSky.render({
+        start: { ra: 233.95, dec: 40.31 },
+        end: { ra: 212.23, dec: 35.0 },
+        lat: 48.8128,
+        lon: 14.6458,
+        event_utc: '2026-06-14T16:47:53Z',
+      });
+      console.log('[skytest] render returned', ok);
+    </script>
+  </body>
+</html>

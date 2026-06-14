@@ -17,6 +17,14 @@ function fmt(v, digits = 1) {
   return v === null || v === undefined ? '—' : Number(v).toFixed(digits);
 }
 
+// Site-local wall-clock time from an ISO string with offset, shown as-is
+// (independent of the viewer's own time zone).
+function fmtLocal(iso) {
+  if (!iso) return '—';
+  const m = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}` : iso;
+}
+
 async function loadGrid() {
   const me = await api('/v1/web/me');
   if (!me.ok) return startLogin();
@@ -28,7 +36,7 @@ async function loadGrid() {
   $('count').textContent = rows.length;
   $('rows').innerHTML = rows
     .map(
-      (r) => `<tr>
+      (r) => `<tr data-key="${encodeURIComponent(r.client_key)}">
         <td>${new Date(r.received_at).toLocaleString()}</td>
         <td><span class="pill">${r.status}</span></td>
         <td class="num">${fmt(r.start_alt)}° / ${fmt(r.start_az)}°</td>
@@ -40,6 +48,35 @@ async function loadGrid() {
     )
     .join('');
   show('app');
+}
+
+// Click a row -> fetch the parsed detail -> draw the trail on the sky map.
+async function selectReport(key, tr) {
+  document.querySelectorAll('#rows tr.selected').forEach((el) => el.classList.remove('selected'));
+  if (tr) tr.classList.add('selected');
+  $('skyCaption').textContent = 'Načítám…';
+  const res = await api('/v1/web/reports/' + key);
+  if (!res.ok) {
+    $('skyCaption').textContent = 'Detail měření se nepodařilo načíst.';
+    return;
+  }
+  const d = await res.json();
+  const rendered = MeteorSky.render(d);
+  showSkyCaption(d, rendered);
+}
+
+function showSkyCaption(d, rendered) {
+  const cap = $('skyCaption');
+  if (!rendered) {
+    cap.innerHTML = 'Měření nemá GPS souřadnice nebo čas — stopu na obloze nelze vykreslit.';
+    return;
+  }
+  const tz = d.event_tz ? ` <span class="muted">(${d.event_tz})</span>` : '';
+  const s = d.start, e = d.end;
+  cap.innerHTML =
+    `<b>${fmtLocal(d.event_local || d.event_utc)}</b>${tz}<br>` +
+    `<span class="muted">Start</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dek ${fmt(s.ra, 1)}° / ${fmt(s.dec, 1)}°<br>` +
+    `<span class="muted">Konec</span> ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dek ${fmt(e.ra, 1)}° / ${fmt(e.dec, 1)}°`;
 }
 
 let pollTimer = null;
@@ -70,6 +107,19 @@ async function startLogin() {
     }
   }, (interval || 2) * 1000);
 }
+
+// Row selection (event delegation).
+$('rows').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr');
+  if (tr && tr.dataset.key) selectReport(tr.dataset.key, tr);
+});
+
+// About / licenses modal.
+$('about').addEventListener('click', () => $('aboutModal').classList.remove('hidden'));
+$('aboutClose').addEventListener('click', () => $('aboutModal').classList.add('hidden'));
+$('aboutModal').addEventListener('click', (e) => {
+  if (e.target.id === 'aboutModal') $('aboutModal').classList.add('hidden');
+});
 
 $('logout').addEventListener('click', async () => {
   await api('/v1/web/logout', { method: 'POST' });
