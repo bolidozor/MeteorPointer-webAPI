@@ -50,6 +50,7 @@ async function startLogin() {
   const res = await api('/v1/web/device-code', { method: 'POST' });
   const { user_code, device_code, interval } = await res.json();
   $('userCode').textContent = user_code;
+  $('qr').src = `${API}/v1/web/qr?data=${encodeURIComponent(user_code)}`;
 
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {

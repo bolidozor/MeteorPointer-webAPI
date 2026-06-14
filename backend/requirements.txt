@@ -19,6 +19,9 @@ cryptography==44.0.0
 # Config
 python-dotenv==1.0.1
 
+# QR codes for web sign-in (pure Python, no deps)
+segno==1.6.1
+
 # Dev / test
 pytest==8.3.4
 pytest-django==4.9.0

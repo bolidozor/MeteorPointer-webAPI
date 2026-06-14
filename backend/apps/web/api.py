@@ -1,5 +1,7 @@
+import io
 from datetime import timedelta
 
+import segno
 from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
@@ -74,6 +76,14 @@ def device_code(request):
         "expires_in": settings.WEB_LOGIN_TTL_SECONDS,
         "interval": 2,
     }
+
+
+@router.get("/qr")
+def qr(request, data: str):
+    """SVG QR code for a sign-in user_code, so the mobile app can scan it."""
+    buf = io.BytesIO()
+    segno.make(data, error="m").save(buf, kind="svg", scale=6, border=2)
+    return HttpResponse(buf.getvalue(), content_type="image/svg+xml")
 
 
 @router.post("/approve", auth=device_auth, response={200: dict, 404: dict, 409: dict})
