@@ -55,34 +55,31 @@ docker compose up -d
 - Health check: `http://localhost:8000/healthz`
 - Interaktivní dokumentace (OpenAPI): `http://localhost:8000/api/docs`
 
-## Nasazení — dvě varianty (jeden `.env`)
+## Nasazení — dva scénáře (jeden `.env`)
 
-Obě varianty čtou stejný `.env` (proměnné specifické pro variantu jsou tam v
-komentovaných sekcích).
+Oba čtou stejný `.env`; každý compose soubor má v hlavičce popis i postup. Proměnné
+specifické pro daný scénář jsou v `.env` v komentovaných sekcích.
 
-### Varianta 1 — TLS na hostiteli / NASu (`docker-compose.prod.yml`)
-API servíruje HTTP; certifikáty a TLS řeší externí/host proxy. 3 kontejnery.
+### A) Vlastní reverzní proxy řeší TLS — `docker-compose.prod.yml`
+Máš vlastní proxy (NAS / čelní server), která drží HTTPS certifikát a přeposílá na
+tenhle stack. Stack běží na HTTP.
 ```bash
 docker compose -f docker-compose.prod.yml up -d
 ```
-Host proxy nasměruj na publikovaný port API (default `:8000`; lze omezit přes
-`API_BIND=127.0.0.1:8000`). Django věří `X-Forwarded-Proto`.
+V proxy nasměruj `https://api.robozor.cz` → tento stroj, port 8000.
+**Adresa do mobilní aplikace:** `https://api.robozor.cz`
 
-### Varianta 2 — HTTPS ve stacku přes Caddy (`docker-compose.tls.yml`)
-Caddy získá a **automaticky obnovuje** certifikát; API je interní, ven jen proxy.
-Režim řídí **`ACME_EMAIL`**:
+### B) TLS řeší tenhle stack, s automatickou obnovou — `docker-compose.tls.yml`
+Nemáš vlastní proxy a chceš, aby si stack certifikát **sám pořídil a obnovoval**.
+Potřebuje veřejnou doménu mířící na tento server a dostupné porty 80 a 443.
 ```bash
-# Lokální test — self-signed CA (ACME_EMAIL prázdné):
-DOMAIN=localhost docker compose -f docker-compose.tls.yml up -d
-curl -k https://localhost/healthz
-
-# Produkce — Let's Encrypt (DOMAIN reálná a dosažitelná):
-DOMAIN=api.robozor.cz ACME_EMAIL=you@robozor.cz \
-  docker compose -f docker-compose.tls.yml up -d
+# v .env: DOMAIN=api.robozor.cz  a  ACME_EMAIL=tvuj@email
+docker compose -f docker-compose.tls.yml up -d
 ```
-`DOMAIN` se automaticky propíše do API (`ALLOWED_HOSTS` + CSRF). Certifikáty se
-ukládají do volume `caddy_data` (obnova přežije restart). `PROXY_HTTP` /
-`PROXY_HTTPS` umí proxy nabindovat na konkrétní IP, když je `:443` obsazené.
+**Adresa do mobilní aplikace:** `https://api.robozor.cz`
+
+> Rychlá lokální kontrola bez domény: `DOMAIN=localhost` a prázdné `ACME_EMAIL`
+> dají self-signed certifikát na `https://localhost` (prohlížeč varuje — očekávané).
 
 ## Testy
 

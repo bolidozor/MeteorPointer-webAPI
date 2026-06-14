@@ -1,35 +1,32 @@
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║ VARIANT 2 — HTTPS terminated INSIDE the stack by Caddy                     ║
+# ║ DEPLOYMENT — TLS handled by THIS STACK, with automatic certificate renewal ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 #
-# WHEN TO USE
-#   You want the stack to manage its own TLS certificate (no external proxy) —
-#   for local HTTPS testing, or production where this stack owns the domain.
+# Use this when this server is reachable from the internet under your domain and
+# you want the stack to manage the HTTPS certificate itself (you do NOT run your
+# own reverse proxy). The built-in Caddy proxy obtains the certificate and renews
+# it automatically before it expires.
 #
-# WHAT YOU GET
-#   3 containers: MeteorPointer-DB + MeteorPointer-API (internal) +
-#   MeteorPointer-Proxy (Caddy). Only the proxy is published (80/443); it obtains
-#   and AUTO-RENEWS the certificate and reverse-proxies to the API.
+# Containers: MeteorPointer-DB + MeteorPointer-API (internal) +
+#             MeteorPointer-Proxy (Caddy, the only one exposed, on ports 80 + 443).
 #
-# CERTIFICATE MODE — driven by ACME_EMAIL in .env:
-#   empty    -> Caddy self-signed CA (e.g. DOMAIN=localhost). Works offline, no
-#               public domain needed. Browsers warn about the CA (expected).
-#   an email -> Let's Encrypt, auto-obtained + auto-renewed. Needs a real DOMAIN
-#               reachable for the ACME challenge (HTTP-01 on :80, or a DNS-01 setup).
+# Requirements:
+#   - A public domain pointing to this server (e.g. api.robozor.cz).
+#   - Ports 80 and 443 reachable from the internet.
 #
-# HOW TO USE
-#   1) cp .env.example .env   and fill in "Common" + "Variant 2" sections.
-#   Local self-signed test:
-#     DOMAIN=localhost docker compose -f docker-compose.tls.yml up -d
-#     curl -k https://localhost/healthz
-#   Production (Let's Encrypt):
-#     DOMAIN=api.robozor.cz ACME_EMAIL=you@robozor.cz \
-#       docker compose -f docker-compose.tls.yml up -d
+# Steps:
+#   1) cp .env.example .env  and set the "Common" + "this stack handles TLS" values:
+#        DOMAIN=api.robozor.cz
+#        ACME_EMAIL=you@robozor.cz     # your e-mail — turns on the real certificate
+#   2) docker compose -f docker-compose.tls.yml up -d
+#
+#   Address to enter in the mobile app (API server URL):  https://api.robozor.cz
+#
 #   Logs:  docker compose -f docker-compose.tls.yml logs -f proxy
 #   Stop:  docker compose -f docker-compose.tls.yml down
 #
-# For TLS handled by an EXTERNAL host/NAS proxy instead, use
-# docker-compose.prod.yml (Variant 1).
+# (Quick local check without a domain: DOMAIN=localhost and an empty ACME_EMAIL
+#  give a self-signed certificate at https://localhost — browsers warn, expected.)
 
 name: meteorpointer
 

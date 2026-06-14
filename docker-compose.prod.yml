@@ -1,26 +1,30 @@
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║ VARIANT 1 — TLS handled by a host / NAS reverse proxy (no proxy in stack)  ║
+# ║ DEPLOYMENT — TLS handled by YOUR OWN reverse proxy (stack serves HTTP)     ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 #
-# WHEN TO USE
-#   You already run a reverse proxy on the host or NAS (Nginx Proxy Manager,
-#   Traefik, Caddy, Synology, …) that terminates HTTPS and manages certificates.
+# Use this when you already run your own reverse proxy that holds the HTTPS
+# certificate (e.g. on a NAS or a front server) and forwards traffic to this
+# stack. The stack itself stays on plain HTTP behind that proxy.
 #
-# WHAT YOU GET
-#   2 containers: MeteorPointer-DB + MeteorPointer-API. The API serves plain
-#   HTTP on :8000; your host/NAS proxy adds TLS in front of it. Django trusts the
-#   proxy's X-Forwarded-Proto header (SECURE_PROXY_SSL_HEADER).
+# Containers: MeteorPointer-DB + MeteorPointer-API (HTTP on port 8000).
+# Django trusts the proxy's X-Forwarded-Proto header, so it still knows the
+# original request was HTTPS.
 #
-# HOW TO USE
-#   1) cp .env.example .env   and fill in the "Common" + "Variant 1" sections.
+# Steps:
+#   1) cp .env.example .env  and set the "Common" + "your own proxy" values, e.g.
+#        DOMAIN=api.robozor.cz        # the public hostname your proxy serves
 #   2) docker compose -f docker-compose.prod.yml up -d
-#   3) On your host/NAS proxy, route your domain -> this machine's API port
-#      (default 0.0.0.0:8000; set API_BIND=127.0.0.1:8000 to expose it only to a
-#      proxy running on this same host).
+#   3) In your proxy, forward  https://api.robozor.cz  ->  this machine, port 8000.
+#      (Set API_BIND=127.0.0.1:8000 if the proxy runs on this same machine and the
+#       API should not be reachable from the rest of the network.)
+#
+#   Address to enter in the mobile app (API server URL):  https://api.robozor.cz
+#
 #   Logs:  docker compose -f docker-compose.prod.yml logs -f api
 #   Stop:  docker compose -f docker-compose.prod.yml down
 #
-# For TLS handled INSIDE the stack instead, use docker-compose.tls.yml (Variant 2).
+# If you do NOT have your own proxy and want this stack to get and renew the
+# certificate itself, use docker-compose.tls.yml instead.
 
 name: meteorpointer
 
