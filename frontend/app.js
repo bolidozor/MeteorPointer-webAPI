@@ -50,9 +50,8 @@ async function startLogin() {
   const res = await api('/v1/web/device-code', { method: 'POST' });
   const { user_code, device_code, interval } = await res.json();
   $('userCode').textContent = user_code;
-  // QR encodes a deep link so scanning it with the phone opens the app.
-  const deepLink = `meteorpointer://weblogin?code=${user_code}`;
-  $('qr').src = `${API}/v1/web/qr?data=${encodeURIComponent(deepLink)}`;
+  // QR encodes the plain user code; the in-app scanner reads and approves it.
+  $('qr').src = `${API}/v1/web/qr?data=${encodeURIComponent(user_code)}`;
 
   clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
