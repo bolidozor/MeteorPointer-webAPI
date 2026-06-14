@@ -1,17 +1,19 @@
 # MeteorPointer — Docker Compose (dev)
-# Containers: MeteorPointer-DB (postgres) + MeteorPointer-API.
-# The web frontend (MeteorPointer-FE) is added later.
+# Containers: MeteorPointer-DB (postgres) + MeteorPointer-API + MeteorPointer-FE
+# (the login-test frontend). Builds the API from source so it has the latest code.
 #
-#   docker compose up -d
-#   docker compose logs -f api
+#   docker compose up -d --build
+#   API:  http://localhost:8000     FE: http://localhost:8080
 
 name: meteorpointer
 
 x-api-env: &api-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-insecure-dev-secret-change-me}
   DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
-  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
   JWT_SECRET: ${JWT_SECRET:-insecure-dev-jwt-secret-change-me}
+  # Allow the login-test frontend (served on :8080) to call the API with cookies.
+  DJANGO_CORS_ORIGINS: ${DJANGO_CORS_ORIGINS:-}
   POSTGRES_DB: ${POSTGRES_DB:-meteorpointer}
   POSTGRES_USER: ${POSTGRES_USER:-meteorpointer}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meteorpointer}
@@ -48,6 +50,17 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    restart: unless-stopped
+
+  fe:
+    build:
+      context: .
+      dockerfile: docker/fe/Dockerfile
+    container_name: MeteorPointer-FE
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
     restart: unless-stopped
 
 volumes:
