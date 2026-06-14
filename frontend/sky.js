@@ -95,65 +95,68 @@
     var host = document.getElementById('skymap');
     if (!host || !model) return;
     var g = geom(), W = g.W, H = g.H, cx = g.cx, hy = g.horizonY, ppd = view.ppd, c = view.az;
-    var halfAz = (W / 2) / ppd + 8; // visible azimuth half-width (deg) + margin
-    var px = function (alt, az) { return [cx + adiff(az, c) * ppd, hy - alt * ppd]; };
-    var vis = function (az) { return Math.abs(adiff(az, c)) <= halfAz; };
+    // x = azimuth offset * cos(altitude): full width at the horizon, converging
+    // to the zenith point at the top. y = altitude (horizon fixed at hy).
+    var px = function (alt, az) { return [cx + adiff(az, c) * ppd * Math.cos(alt * D2R), hy - alt * ppd]; };
+    var onx = function (x) { return x >= -60 && x <= W + 60; };           // on-screen horizontally
+    var project = function (coords, minAlt) {  // -> array of screen polylines
+      var segs = [], cur = [], prevX = null;
+      for (var i = 0; i < coords.length; i++) {
+        var alt = coords[i][0];
+        if (alt < (minAlt == null ? 0 : minAlt) || !onx(px(alt, coords[i][1])[0])) {
+          if (cur.length > 1) segs.push(cur); cur = []; prevX = null; continue;
+        }
+        var p = px(alt, coords[i][1]);
+        if (prevX !== null && Math.abs(p[0] - prevX) > W * 0.5) { if (cur.length > 1) segs.push(cur); cur = []; }
+        cur.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); prevX = p[0];
+      }
+      if (cur.length > 1) segs.push(cur);
+      return segs;
+    };
 
     var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block">';
     svg += '<rect x="0" y="0" width="' + W + '" height="' + hy + '" fill="#070710"/>';                 // sky
     svg += '<rect x="0" y="' + hy + '" width="' + W + '" height="' + (H - hy) + '" fill="#0c0608"/>';   // ground
 
-    // almucantars (constant altitude -> horizontal lines)
-    [30, 60].forEach(function (al) {
-      var y = (hy - al * ppd).toFixed(1);
-      svg += '<line x1="0" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="#20202f" stroke-width="1" opacity="0.55"/>';
-    });
-    // meridians (constant azimuth -> vertical lines), every 15 deg
+    // alt-azimuth grid: meridians (converging at the zenith) + almucantars
     for (var mz = 0; mz < 360; mz += 15) {
-      if (!vis(mz)) continue;
-      var x = (cx + adiff(mz, c) * ppd).toFixed(1);
-      var major = (mz % 90 === 0);
-      svg += '<line x1="' + x + '" y1="' + (hy - 90 * ppd).toFixed(1) + '" x2="' + x + '" y2="' + hy + '" stroke="' + (major ? '#2c2c42' : '#20202f') + '" stroke-width="1" opacity="0.6"/>';
+      var mer = []; for (var ma = 0; ma <= 89; ma += 3) mer.push([ma, mz]);
+      var maj = (mz % 90 === 0);
+      project(mer, 0).forEach(function (sg) { svg += line(sg, maj ? '#2f2f46' : '#222232', maj ? 0.75 : 0.55); });
     }
-
-    // constellation lines (split where the azimuth seam would draw a long jump)
-    model.lines.forEach(function (ls) {
-      var cur = [], prevX = null;
-      for (var i = 0; i < ls.length; i++) {
-        var alt = ls[i][0], az = ls[i][1];
-        if (alt < -3 || !vis(az)) { if (cur.length > 1) svg += poly(cur); cur = []; prevX = null; continue; }
-        var p = px(alt, az);
-        if (prevX !== null && Math.abs(p[0] - prevX) > W * 0.5) { if (cur.length > 1) svg += poly(cur); cur = []; }
-        cur.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); prevX = p[0];
-      }
-      if (cur.length > 1) svg += poly(cur);
+    [30, 60].forEach(function (al) {
+      var alm = []; for (var az = -180; az <= 180; az += 3) alm.push([al, ((c + az) % 360 + 360) % 360]);
+      project(alm, 0).forEach(function (sg) { svg += line(sg, '#222232', 0.5); });
     });
 
-    // stars (above horizon)
+    // constellation lines
+    model.lines.forEach(function (ls) { project(ls, -3).forEach(function (sg) { svg += line(sg, '#3b6ea5', 0.6); }); });
+
+    // stars
     model.stars.forEach(function (st) {
-      if (st.alt < 0 || !vis(st.az)) return;
-      var p = px(st.alt, st.az), r = Math.max(0.5, (6.2 - st.mag) * 0.42);
+      if (st.alt < 0) return;
+      var p = px(st.alt, st.az); if (!onx(p[0])) return;
+      var r = Math.max(0.5, (6.2 - st.mag) * 0.42);
       svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + r.toFixed(1) + '" fill="#eef0ff" opacity="' + Math.min(1, 0.35 + (6 - st.mag) * 0.13).toFixed(2) + '"/>';
     });
     // constellation names
     model.names.forEach(function (nm) {
-      if (nm.alt < -2 || !vis(nm.az)) return;
-      var p = px(nm.alt, nm.az);
+      if (nm.alt < -2) return;
+      var p = px(nm.alt, nm.az); if (!onx(p[0])) return;
       svg += '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" fill="#9fb6d6" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif" opacity="0.85">' + esc(constName(nm.props)) + '</text>';
     });
 
     // horizon line (fixed) + cardinal marks sliding along it
     svg += '<line x1="0" y1="' + hy + '" x2="' + W + '" y2="' + hy + '" stroke="#ff5a5a" stroke-width="1.8"/>';
     CARDINALS.forEach(function (cd) {
-      if (!vis(cd.az)) return;
-      var x = cx + adiff(cd.az, c) * ppd;
+      var x = px(0, cd.az)[0]; if (!onx(x)) return;
       svg += '<line x1="' + x.toFixed(1) + '" y1="' + (hy - 7) + '" x2="' + x.toFixed(1) + '" y2="' + (hy + 7) + '" stroke="#ff7a7a" stroke-width="1.5"/>';
       svg += '<text x="' + x.toFixed(1) + '" y="' + (hy + 24) + '" fill="#ffb0b0" font-size="14" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">' + esc(dirLabel(cd.key)) + '</text>';
     });
 
     // meteor trail
-    if (vis(model.start.az) || vis(model.end.az)) {
-      var a = px(model.start.alt, model.start.az), b = px(model.end.alt, model.end.az);
+    var a = px(model.start.alt, model.start.az), b = px(model.end.alt, model.end.az);
+    if (onx(a[0]) || onx(b[0])) {
       svg += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#ff3b3b" stroke-width="2.5" stroke-linecap="round"/>';
       svg += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="5" fill="#5dff5d"/>';
       svg += '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="5" fill="#ff3b3b"/>';
@@ -161,17 +164,20 @@
     svg += '</svg>';
     host.innerHTML = svg;
   }
-  function poly(pts) { return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#3b6ea5" stroke-width="1" opacity="0.6"/>'; }
+  function line(pts, stroke, op) { return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + stroke + '" stroke-width="1" opacity="' + op + '"/>'; }
 
   var raf = false;
   function schedule() { if (raf) return; raf = true; requestAnimationFrame(function () { raf = false; paint(); }); }
 
   function resetView() {
     var g = geom();
-    baseppd = (g.horizonY * 0.96) / 92;   // default: horizon..zenith fits above the line
+    // Fully zoomed out = the whole sky (horizon..zenith) fills the panel, with
+    // the zenith just past the top edge. This is the minimum zoom, so the view
+    // always fills the panel; zooming in only narrows the field of view.
+    baseppd = g.horizonY / 86;
     view = { az: model.centerAz, ppd: baseppd };
   }
-  function zoom(factor) { view.ppd = Math.max(baseppd * 0.6, Math.min(baseppd * 8, view.ppd * factor)); }
+  function zoom(factor) { view.ppd = Math.max(baseppd, Math.min(baseppd * 9, view.ppd * factor)); }
 
   function bind(host) {
     if (host._mpBound) return; host._mpBound = true;
