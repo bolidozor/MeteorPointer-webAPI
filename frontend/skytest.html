@@ -4,26 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MeteorPointer — sky render test</title>
-    <link rel="stylesheet" href="vendor/celestial/celestial.css" />
     <style>
-      body { background: #0a0a14; color: #e6e6ea; font-family: system-ui, sans-serif; margin: 0; }
-      #skymap { width: 480px; margin: 20px auto; }
-      p { text-align: center; }
-      #celestial-form { display: none !important; }
+      body { background: #0e0e12; color: #e6e6ea; font-family: system-ui, sans-serif; margin: 0; }
+      p { text-align: center; margin: 10px; }
+      #skymap { width: 90vw; height: 70vh; margin: 0 auto; }
     </style>
   </head>
   <body>
-    <p>Standalone render test (real parsed RA/Dec, no login).</p>
+    <p>Standalone half-dome render test (real measured alt/az, no login).</p>
     <div id="skymap"></div>
-    <script src="vendor/celestial/d3.min.js"></script>
-    <script src="vendor/celestial/d3.geo.projection.min.js"></script>
-    <script src="vendor/celestial/celestial.min.js"></script>
+    <script src="i18n.js"></script>
     <script src="sky.js"></script>
     <script>
-      // A real parsed measurement from the Czech site.
+      // A real measurement from the Czech site (alt/az as measured).
       var ok = MeteorSky.render({
-        start: { ra: 233.95, dec: 40.31 },
-        end: { ra: 212.23, dec: 35.0 },
+        start: { alt: 44.8, az: 75.5, ra: 233.95, dec: 40.31 },
+        end: { alt: 58.6, az: 90.7, ra: 212.23, dec: 39.6 },
         lat: 48.8128,
         lon: 14.6458,
         event_utc: '2026-06-14T16:47:53Z',

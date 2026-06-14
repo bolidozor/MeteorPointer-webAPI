@@ -4,128 +4,134 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MeteorPointer</title>
-    <link rel="stylesheet" href="vendor/celestial/celestial.css" />
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
+      html, body { height: 100%; }
       body {
         margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         background: #0e0e12; color: #e6e6ea;
+        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       }
       header {
-        padding: 18px 24px; border-bottom: 1px solid #26262e;
+        flex: none; padding: 14px 22px; border-bottom: 1px solid #26262e;
         display: flex; align-items: center; justify-content: space-between;
       }
       header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
       header .accent { color: #ff5a5a; }
-      .header-actions { display: flex; gap: 10px; }
-      main { max-width: 1280px; margin: 0 auto; padding: 24px; }
-      .card {
-        background: #16161c; border: 1px solid #26262e; border-radius: 12px;
-        padding: 24px; margin-bottom: 20px;
-      }
-      .code {
-        font-size: 40px; font-weight: 800; letter-spacing: 6px; text-align: center;
-        color: #ff8a5a; margin: 16px 0; font-variant-numeric: tabular-nums;
-      }
-      .qrwrap { text-align: center; margin: 18px 0; }
-      .qrbox { background: #fff; padding: 16px; border-radius: 12px; display: inline-block; }
-      .qrbox img { display: block; width: 320px; height: 320px; image-rendering: pixelated; }
-      .muted { color: #9a9aa6; font-size: 14px; }
-      .status { margin-top: 10px; font-size: 14px; }
+      .header-actions { display: flex; gap: 10px; align-items: center; }
+      .langswitch { display: flex; border: 1px solid #3a3a46; border-radius: 8px; overflow: hidden; }
+      .langswitch button { border: 0; border-radius: 0; padding: 7px 11px; font-size: 13px; }
+      .langswitch button.active { background: #ff5a5a; color: #15151b; font-weight: 700; }
       button {
         background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46;
         border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
       }
       button:hover { background: #34343f; }
+      .langswitch button.active:hover { background: #ff6e6e; }
+
+      main { flex: 1; min-height: 0; display: flex; }
+
+      /* login fills the page when signed out */
+      #login { margin: auto; max-width: 460px; }
+      .card { background: #16161c; border: 1px solid #26262e; border-radius: 12px; padding: 24px; }
+      .code { font-size: 40px; font-weight: 800; letter-spacing: 6px; text-align: center; color: #ff8a5a; margin: 16px 0; font-variant-numeric: tabular-nums; }
+      .qrwrap { text-align: center; margin: 18px 0; }
+      .qrbox { background: #fff; padding: 16px; border-radius: 12px; display: inline-block; }
+      .qrbox img { display: block; width: 300px; height: 300px; image-rendering: pixelated; }
+      .muted { color: #9a9aa6; font-size: 14px; }
+      .status { margin-top: 10px; font-size: 14px; }
+
+      /* signed-in: grid (left, content width, own scroll) + sky (right, fills rest) */
+      #app { flex: 1; min-height: 0; display: flex; }
+      .col-grid { flex: none; max-width: 60%; overflow: auto; border-right: 1px solid #26262e; }
+      .grid-inner { padding: 16px 20px; }
+      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .sky-head { flex: none; padding: 12px 20px; font-size: 12px; color: #9a9aa6; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1c1c24; }
+      #skymap { flex: 1; min-height: 0; width: 100%; }
+      .sky-foot { flex: none; padding: 12px 20px; border-top: 1px solid #1c1c24; }
+      .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 8px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
+      .sky-caption { line-height: 1.5; font-size: 13px; }
+
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #23232b; white-space: nowrap; }
-      th { color: #9a9aa6; font-weight: 600; }
+      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #16161c; }
       td.num { font-variant-numeric: tabular-nums; }
       .pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #2a2a34; }
-      .hidden { display: none !important; }
-
-      /* two-column layout: measurements grid + sky map */
-      .layout { display: flex; gap: 20px; align-items: flex-start; }
-      .col-grid { flex: 1; min-width: 0; }
-      .col-sky { width: 500px; flex: none; position: sticky; top: 20px; }
-      @media (max-width: 1100px) { .layout { flex-wrap: wrap; } .col-sky { width: 100%; position: static; } }
-
       tbody tr { cursor: pointer; }
       tbody tr:hover { background: #1c1c24; }
       tbody tr.selected { background: #2a1622; }
       tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 #ff5a5a; }
 
-      .sky-head { font-size: 13px; color: #9a9aa6; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
-      #skymap { width: 100%; }
-      #celestial-form { display: none !important; }
-      .sky-caption { margin-top: 14px; line-height: 1.5; }
-      .legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #c4c4cf; }
-      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
+      .hidden { display: none !important; }
 
-      /* about modal */
-      .modal { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: flex;
-               align-items: center; justify-content: center; z-index: 50; padding: 20px; }
-      .modal-box { background: #16161c; border: 1px solid #2c2c36; border-radius: 14px;
-                   max-width: 680px; width: 100%; max-height: 84vh; overflow: auto; padding: 28px; }
+      .modal { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+      .modal-box { background: #16161c; border: 1px solid #2c2c36; border-radius: 14px; max-width: 680px; width: 100%; max-height: 84vh; overflow: auto; padding: 28px; }
       .modal-box h2 { margin: 0 0 4px; font-size: 20px; }
       .modal-box h3 { margin: 22px 0 8px; font-size: 14px; color: #ff8a5a; letter-spacing: .5px; }
       .modal-box p, .modal-box li { font-size: 13px; line-height: 1.6; color: #c8c8d2; }
       .modal-box ul { margin: 6px 0; padding-left: 18px; }
       .modal-box a { color: #7aa2ff; }
       .modal-foot { margin-top: 22px; text-align: right; }
-      code { background: #23232b; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
     </style>
   </head>
   <body>
     <header>
       <h1>METEOR<span class="accent">POINTER</span></h1>
       <div class="header-actions">
-        <button id="about">O aplikaci</button>
-        <button id="logout" class="hidden">Odhlásit</button>
+        <div class="langswitch">
+          <button data-lang="cs">CZ</button>
+          <button data-lang="en">EN</button>
+        </div>
+        <button id="about" data-i18n="about">O aplikaci</button>
+        <button id="logout" class="hidden" data-i18n="logout">Odhlásit</button>
       </div>
     </header>
+
     <main>
       <!-- Login -->
       <section id="login" class="card hidden">
-        <h2>Přihlášení přes mobilní aplikaci</h2>
-        <p class="muted">V aplikaci klepni <b>Autorizovat web</b>, pak <b>Skenovat QR</b> a namiř na kód níže — nebo kód opiš ručně:</p>
-        <div class="qrwrap"><div class="qrbox"><img id="qr" alt="QR kód" /></div></div>
+        <h2 data-i18n="login.heading">Přihlášení přes mobilní aplikaci</h2>
+        <p class="muted" data-i18n-html="login.howto"></p>
+        <div class="qrwrap"><div class="qrbox"><img id="qr" alt="QR" /></div></div>
         <div class="code" id="userCode">····-····</div>
-        <p class="status muted" id="loginStatus">Čekám na potvrzení v aplikaci…</p>
+        <p class="status muted" id="loginStatus" data-i18n="login.waiting"></p>
       </section>
 
-      <!-- Grid + sky map -->
-      <div id="app" class="layout hidden">
+      <!-- Grid + sky -->
+      <div id="app" class="hidden">
         <div class="col-grid">
-          <section class="card">
-            <p class="muted">Přihlášen jako zařízení <b id="deviceId"></b> — <span id="count"></span> měření. Klepni na řádek pro zobrazení stopy na obloze.</p>
-            <div style="overflow-x:auto">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Přijato</th><th>Stav</th>
-                    <th>Start ALT/AZ</th><th>Konec ALT/AZ</th>
-                    <th>Kvalita</th><th>GPS</th><th>±m</th>
-                  </tr>
-                </thead>
-                <tbody id="rows"></tbody>
-              </table>
-            </div>
-          </section>
+          <div class="grid-inner">
+            <p class="muted" id="gridIntro"></p>
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="grid.received">Přijato</th>
+                  <th data-i18n="grid.status">Stav</th>
+                  <th data-i18n="grid.startAltAz">Start ALT/AZ</th>
+                  <th data-i18n="grid.endAltAz">Konec ALT/AZ</th>
+                  <th data-i18n="grid.quality">Kvalita</th>
+                  <th data-i18n="grid.gps">GPS</th>
+                  <th data-i18n="grid.acc">±m</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
         </div>
-        <aside class="col-sky">
-          <section class="card">
-            <div class="sky-head">Obloha v čase a místě měření</div>
-            <div id="skymap"></div>
+        <div class="col-sky">
+          <div class="sky-head" data-i18n="sky.head">Obloha v čase a místě měření</div>
+          <div id="skymap"></div>
+          <div class="sky-foot">
             <div class="legend">
-              <span><span class="dot start"></span>začátek stopy</span>
-              <span><span class="dot end"></span>konec stopy</span>
+              <span><span class="dot start"></span><span data-i18n="sky.start">začátek stopy</span></span>
+              <span><span class="dot end"></span><span data-i18n="sky.end">konec stopy</span></span>
             </div>
-            <div class="sky-caption muted" id="skyCaption">Vyber měření vlevo pro zobrazení stopy meteoru.</div>
-          </section>
-        </aside>
+            <div class="sky-caption muted" id="skyCaption" data-i18n="sky.pick"></div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -133,38 +139,25 @@
     <div id="aboutModal" class="modal hidden">
       <div class="modal-box">
         <h2>METEOR<span style="color:#ff5a5a">POINTER</span></h2>
-        <p class="muted">Síť pro pozorování meteorů Bolidozor. Web pro nekomerční a výzkumné účely.
-          Naměřená data jsou poskytována pod licencí <b>CC0 1.0</b> (volné dílo).</p>
-
-        <h3>Použité komponenty a licence</h3>
-        <p>Tato aplikace používá následující open-source software a data; uvádíme je zde,
-          abychom dostáli jejich licenčním podmínkám (zachování autorství / atribuce).</p>
+        <p class="muted" data-i18n-html="about_box.tagline"></p>
+        <h3 data-i18n="about_box.compH"></h3>
+        <p data-i18n="about_box.compIntro"></p>
         <ul>
-          <li><b>d3-celestial</b> — mapa hvězdné oblohy. © 2015 Olaf Frohn. Licence <b>BSD-3-Clause</b>.
+          <li><b>d3-celestial</b> — © 2015 Olaf Frohn. <b>BSD-3-Clause</b>.
             <a href="https://github.com/ofrohn/d3-celestial" target="_blank" rel="noopener">github.com/ofrohn/d3-celestial</a></li>
-          <li><b>D3.js</b> — vizualizační knihovna. © Mike Bostock. Licence <b>BSD-3-Clause</b>.
-            <a href="https://d3js.org" target="_blank" rel="noopener">d3js.org</a></li>
-          <li><b>Katalog hvězd</b> — Hipparcos (ESA); názvy a čáry souhvězdí dle <b>IAU</b>;
-            obrys Mléčné dráhy. Data dodávaná s d3-celestial.</li>
-          <li><b>segno</b> — generování QR kódů (server). Licence <b>BSD</b>.</li>
-          <li><b>timezonefinder</b> — určení časového pásma místa (server). Licence <b>MIT</b>;
-            hranice pásem © přispěvatelé <b>OpenStreetMap</b>, licence <b>ODbL</b>.</li>
-          <li><b>Django</b> (BSD) &amp; <b>django-ninja</b> (MIT) — serverový framework API.</li>
+          <li><b>D3.js</b> — © Mike Bostock. <b>BSD-3-Clause</b>. <a href="https://d3js.org" target="_blank" rel="noopener">d3js.org</a></li>
+          <li data-i18n-html="about_box.liStars"></li>
+          <li data-i18n-html="about_box.liSegno"></li>
+          <li data-i18n-html="about_box.liTz"></li>
+          <li data-i18n-html="about_box.liDjango"></li>
         </ul>
-
-        <h3>Souřadnice a čas</h3>
-        <p>Stopa meteoru je zaznamenána jako dva směry (výška/azimut) v okamžiku měření.
-          Rovníkové souřadnice (RA/Dek) pro vykreslení na obloze počítá server uzavřeným
-          převodem. Čas události je absolutní UTC; lokální čas v místě pozorování se odvozuje
-          z GPS polohy a časového pásma.</p>
-
-        <div class="modal-foot"><button id="aboutClose">Zavřít</button></div>
+        <h3 data-i18n="about_box.coordsH"></h3>
+        <p data-i18n="about_box.coords"></p>
+        <div class="modal-foot"><button id="aboutClose" data-i18n="about_box.close">Zavřít</button></div>
       </div>
     </div>
 
-    <script src="vendor/celestial/d3.min.js"></script>
-    <script src="vendor/celestial/d3.geo.projection.min.js"></script>
-    <script src="vendor/celestial/celestial.min.js"></script>
+    <script src="i18n.js"></script>
     <script src="sky.js"></script>
     <script src="app.js"></script>
   </body>

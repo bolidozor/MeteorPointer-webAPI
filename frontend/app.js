@@ -1,6 +1,7 @@
 // Minimal login-test frontend. The real frontend (framework, full UI) follows.
 // The API is assumed to run on the same host, port 8000.
 const API = `${location.protocol}//${location.hostname}:8000`;
+const t = (k, v) => window.MPI18n.t(k, v);
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,23 +18,29 @@ function fmt(v, digits = 1) {
   return v === null || v === undefined ? '—' : Number(v).toFixed(digits);
 }
 
-// Site-local wall-clock time from an ISO string with offset, shown as-is
-// (independent of the viewer's own time zone).
+// Site-local wall-clock time from an ISO string with offset (shown as-is,
+// independent of the viewer's own time zone).
 function fmtLocal(iso) {
   if (!iso) return '—';
   const m = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   return m ? `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}` : iso;
 }
 
+let meData = null;        // { device_id, count }
+let selectedDetail = null; // last loaded measurement detail (for re-render)
+
 async function loadGrid() {
   const me = await api('/v1/web/me');
   if (!me.ok) return startLogin();
-  const meData = await me.json();
-  $('deviceId').textContent = meData.device_id.slice(0, 8);
+  const m = await me.json();
+  if (window.MPI18n.supported(m.language)) {
+    window.MPI18n.setLang(m.language);
+    localStorage.setItem('mp_lang', m.language);
+  }
 
   const res = await api('/v1/web/reports');
   const rows = res.ok ? await res.json() : [];
-  $('count').textContent = rows.length;
+  meData = { device_id: m.device_id.slice(0, 8), count: rows.length };
   $('rows').innerHTML = rows
     .map(
       (r) => `<tr data-key="${encodeURIComponent(r.client_key)}">
@@ -47,47 +54,50 @@ async function loadGrid() {
       </tr>`,
     )
     .join('');
+  refreshGridIntro();
   show('app');
 }
 
-// Click a row -> fetch the parsed detail -> draw the trail on the sky map.
+function refreshGridIntro() {
+  if (meData) $('gridIntro').textContent = t('grid.intro', { device: meData.device_id, n: meData.count });
+}
+
+// Click a row -> fetch the parsed detail -> draw the trail on the sky dome.
 async function selectReport(key, tr) {
   document.querySelectorAll('#rows tr.selected').forEach((el) => el.classList.remove('selected'));
   if (tr) tr.classList.add('selected');
-  $('skyCaption').textContent = 'Načítám…';
+  $('skyCaption').textContent = t('sky.loading');
   const res = await api('/v1/web/reports/' + key);
   if (!res.ok) {
-    $('skyCaption').textContent = 'Detail měření se nepodařilo načíst.';
+    selectedDetail = null;
+    $('skyCaption').textContent = t('sky.loadFail');
     return;
   }
-  const d = await res.json();
-  const rendered = MeteorSky.render(d);
-  showSkyCaption(d, rendered);
+  selectedDetail = await res.json();
+  showSkyCaption(selectedDetail);
 }
 
-function showSkyCaption(d, rendered) {
+function showSkyCaption(d) {
   const cap = $('skyCaption');
-  if (!rendered) {
-    cap.innerHTML = 'Měření nemá GPS souřadnice nebo čas — stopu na obloze nelze vykreslit.';
-    return;
-  }
+  const rendered = d ? MeteorSky.render(d) : false;
+  if (!d) { cap.textContent = t('sky.pick'); return; }
+  if (!rendered) { cap.textContent = t('sky.noCoords'); return; }
   const tz = d.event_tz ? ` <span class="muted">(${d.event_tz})</span>` : '';
   const s = d.start, e = d.end;
   cap.innerHTML =
     `<b>${fmtLocal(d.event_local || d.event_utc)}</b>${tz}<br>` +
-    `<span class="muted">Start</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dek ${fmt(s.ra, 1)}° / ${fmt(s.dec, 1)}°<br>` +
-    `<span class="muted">Konec</span> ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dek ${fmt(e.ra, 1)}° / ${fmt(e.dec, 1)}°`;
+    `<span class="muted">${t('sky.startLabel')}</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dek ${fmt(s.ra, 1)}° / ${fmt(s.dec, 1)}°<br>` +
+    `<span class="muted">${t('sky.endLabel')}</span> ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dek ${fmt(e.ra, 1)}° / ${fmt(e.dec, 1)}°`;
 }
 
 let pollTimer = null;
 
 async function startLogin() {
   show('login');
-  $('loginStatus').textContent = 'Čekám na potvrzení v aplikaci…';
+  $('loginStatus').textContent = t('login.waiting');
   const res = await api('/v1/web/device-code', { method: 'POST' });
   const { user_code, device_code, interval } = await res.json();
   $('userCode').textContent = user_code;
-  // QR encodes the plain user code; the in-app scanner reads and approves it.
   $('qr').src = `${API}/v1/web/qr?data=${encodeURIComponent(user_code)}`;
 
   clearInterval(pollTimer);
@@ -103,10 +113,34 @@ async function startLogin() {
       loadGrid();
     } else if (status === 'expired') {
       clearInterval(pollTimer);
-      startLogin(); // restart with a fresh code
+      startLogin();
     }
   }, (interval || 2) * 1000);
 }
+
+// Re-apply language-dependent dynamic content whenever the language changes.
+window.onI18nApplied = function () {
+  refreshGridIntro();
+  if (selectedDetail) showSkyCaption(selectedDetail);
+  else $('skyCaption').textContent = t('sky.pick');
+  if (window.MeteorSky) MeteorSky.redraw();
+};
+
+// Language switcher: update UI now, persist on the device (if signed in).
+document.querySelectorAll('[data-lang]').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const lang = btn.getAttribute('data-lang');
+    window.MPI18n.setLang(lang);
+    localStorage.setItem('mp_lang', lang);
+    if (meData) {
+      await api('/v1/web/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang }),
+      });
+    }
+  });
+});
 
 // Row selection (event delegation).
 $('rows').addEventListener('click', (e) => {
@@ -123,8 +157,19 @@ $('aboutModal').addEventListener('click', (e) => {
 
 $('logout').addEventListener('click', async () => {
   await api('/v1/web/logout', { method: 'POST' });
+  meData = null;
+  selectedDetail = null;
   startLogin();
 });
+
+// Provisional language before we know the device setting: stored choice, else
+// the browser language, else Czech.
+(function initLang() {
+  const stored = localStorage.getItem('mp_lang');
+  const nav = (navigator.language || 'cs').slice(0, 2);
+  const lang = window.MPI18n.supported(stored) ? stored : (window.MPI18n.supported(nav) ? nav : 'cs');
+  window.MPI18n.setLang(lang);
+})();
 
 // Start: if already logged in, show the grid; otherwise begin the login flow.
 loadGrid();

@@ -40,6 +40,11 @@ class PollOut(Schema):
 class MeOut(Schema):
     device_id: str
     label: str
+    language: str
+
+
+class SettingsIn(Schema):
+    language: str
 
 
 class ReportRow(Schema):
@@ -160,10 +165,32 @@ def poll(request, payload: PollIn, response: HttpResponse):
 
 # ---- authenticated web session ----
 
+def _me_payload(device):
+    return {
+        "device_id": str(device.id),
+        "label": device.label,
+        "language": device.fe_language or "cs",
+    }
+
+
 @router.get("/me", auth=web_auth, response=MeOut)
 def me(request):
+    return _me_payload(request.web_device)
+
+
+# Supported web-frontend languages; anything else falls back to Czech.
+WEB_LANGUAGES = {"cs", "en"}
+
+
+@router.post("/settings", auth=web_auth, response=MeOut)
+def update_settings(request, payload: SettingsIn):
+    """Persist this device's web-frontend language preference."""
     device = request.web_device
-    return {"device_id": str(device.id), "label": device.label}
+    lang = payload.language if payload.language in WEB_LANGUAGES else "cs"
+    if lang != device.fe_language:
+        device.fe_language = lang
+        device.save(update_fields=["fe_language"])
+    return _me_payload(device)
 
 
 @router.get("/reports", auth=web_auth, response=list[ReportRow])
