@@ -19,7 +19,25 @@ def env_list(name: str, default: str = "") -> list[str]:
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-secret-change-me")
 DEBUG = env_bool("DJANGO_DEBUG", True)
+
+# Public domain — set in the stack env when deployed behind the HTTPS proxy.
+# It drives ALLOWED_HOSTS and CSRF automatically, so it's configured once.
+# Empty (the default) = plain HTTP mode (e.g. local LAN testing).
+DOMAIN = os.environ.get("DOMAIN", "").strip()
+
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,api")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+if DOMAIN:
+    https_origin = f"https://{DOMAIN}"
+    if https_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(https_origin)
+    # localhost is already in the default ALLOWED_HOSTS.
+    if DOMAIN != "localhost" and DOMAIN not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(DOMAIN)
+
+# Behind a TLS-terminating reverse proxy (Caddy): trust its X-Forwarded-Proto
+# so Django treats forwarded requests as secure and builds https:// URLs.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # --- JWT (device access tokens) ---
 JWT_SECRET = os.environ.get("JWT_SECRET", SECRET_KEY)

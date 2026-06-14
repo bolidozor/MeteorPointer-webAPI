@@ -55,6 +55,35 @@ docker compose up -d
 - Health check: `http://localhost:8000/healthz`
 - Interaktivní dokumentace (OpenAPI): `http://localhost:8000/api/docs`
 
+## Nasazení — dvě varianty (jeden `.env`)
+
+Obě varianty čtou stejný `.env` (proměnné specifické pro variantu jsou tam v
+komentovaných sekcích).
+
+### Varianta 1 — TLS na hostiteli / NASu (`docker-compose.prod.yml`)
+API servíruje HTTP; certifikáty a TLS řeší externí/host proxy. 3 kontejnery.
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+Host proxy nasměruj na publikovaný port API (default `:8000`; lze omezit přes
+`API_BIND=127.0.0.1:8000`). Django věří `X-Forwarded-Proto`.
+
+### Varianta 2 — HTTPS ve stacku přes Caddy (`docker-compose.tls.yml`)
+Caddy získá a **automaticky obnovuje** certifikát; API je interní, ven jen proxy.
+Režim řídí **`ACME_EMAIL`**:
+```bash
+# Lokální test — self-signed CA (ACME_EMAIL prázdné):
+DOMAIN=localhost docker compose -f docker-compose.tls.yml up -d
+curl -k https://localhost/healthz
+
+# Produkce — Let's Encrypt (DOMAIN reálná a dosažitelná):
+DOMAIN=api.robozor.cz ACME_EMAIL=you@robozor.cz \
+  docker compose -f docker-compose.tls.yml up -d
+```
+`DOMAIN` se automaticky propíše do API (`ALLOWED_HOSTS` + CSRF). Certifikáty se
+ukládají do volume `caddy_data` (obnova přežije restart). `PROXY_HTTP` /
+`PROXY_HTTPS` umí proxy nabindovat na konkrétní IP, když je `:443` obsazené.
+
 ## Testy
 
 ```bash

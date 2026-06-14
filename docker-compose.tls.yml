@@ -1,0 +1,102 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ VARIANT 2 — HTTPS terminated INSIDE the stack by Caddy                     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# WHEN TO USE
+#   You want the stack to manage its own TLS certificate (no external proxy) —
+#   for local HTTPS testing, or production where this stack owns the domain.
+#
+# WHAT YOU GET
+#   3 containers: MeteorPointer-DB + MeteorPointer-API (internal) +
+#   MeteorPointer-Proxy (Caddy). Only the proxy is published (80/443); it obtains
+#   and AUTO-RENEWS the certificate and reverse-proxies to the API.
+#
+# CERTIFICATE MODE — driven by ACME_EMAIL in .env:
+#   empty    -> Caddy self-signed CA (e.g. DOMAIN=localhost). Works offline, no
+#               public domain needed. Browsers warn about the CA (expected).
+#   an email -> Let's Encrypt, auto-obtained + auto-renewed. Needs a real DOMAIN
+#               reachable for the ACME challenge (HTTP-01 on :80, or a DNS-01 setup).
+#
+# HOW TO USE
+#   1) cp .env.example .env   and fill in "Common" + "Variant 2" sections.
+#   Local self-signed test:
+#     DOMAIN=localhost docker compose -f docker-compose.tls.yml up -d
+#     curl -k https://localhost/healthz
+#   Production (Let's Encrypt):
+#     DOMAIN=api.robozor.cz ACME_EMAIL=you@robozor.cz \
+#       docker compose -f docker-compose.tls.yml up -d
+#   Logs:  docker compose -f docker-compose.tls.yml logs -f proxy
+#   Stop:  docker compose -f docker-compose.tls.yml down
+#
+# For TLS handled by an EXTERNAL host/NAS proxy instead, use
+# docker-compose.prod.yml (Variant 1).
+
+name: meteorpointer
+
+x-api-env: &api-env
+  DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set in .env}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+  DOMAIN: ${DOMAIN:?set DOMAIN in .env (e.g. api.robozor.cz or localhost)}
+  ACME_EMAIL: ${ACME_EMAIL:-}
+  JWT_SECRET: ${JWT_SECRET:?set in .env}
+  POSTGRES_DB: ${POSTGRES_DB:-meteorpointer}
+  POSTGRES_USER: ${POSTGRES_USER:-meteorpointer}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: MeteorPointer-DB
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meteorpointer}
+      POSTGRES_USER: ${POSTGRES_USER:-meteorpointer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - meteorpointer_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meteorpointer} -d ${POSTGRES_DB:-meteorpointer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/bolidozor/meteorpointer-api:${API_TAG:-latest}
+    container_name: MeteorPointer-API
+    environment:
+      <<: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"  # internal only; reached by the proxy over the docker network
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2-alpine
+    container_name: MeteorPointer-Proxy
+    depends_on:
+      - api
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      # empty ACME_EMAIL -> internal self-signed CA; an email -> Let's Encrypt.
+      TLS_ARG: ${ACME_EMAIL:-internal}
+    ports:
+      # Override PROXY_HTTP/PROXY_HTTPS (e.g. 192.168.0.49:443) to bind a
+      # specific host IP when :443 is already taken by another service.
+      - "${PROXY_HTTP:-80}:80"
+      - "${PROXY_HTTPS:-443}:443"
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - meteorpointer_caddy_data:/data
+      - meteorpointer_caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  meteorpointer_db_data:
+  meteorpointer_caddy_data:
+  meteorpointer_caddy_config:

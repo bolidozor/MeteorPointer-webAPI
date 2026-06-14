@@ -1,17 +1,35 @@
-# MeteorPointer — Docker Compose (production / released images)
-# Pulls the published API image from GHCR instead of building locally.
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ VARIANT 1 — TLS handled by a host / NAS reverse proxy (no proxy in stack)  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
 #
-#   API_TAG=v0.1.0 docker compose -f docker-compose.prod.yml pull
-#   API_TAG=v0.1.0 docker compose -f docker-compose.prod.yml up -d
+# WHEN TO USE
+#   You already run a reverse proxy on the host or NAS (Nginx Proxy Manager,
+#   Traefik, Caddy, Synology, …) that terminates HTTPS and manages certificates.
 #
-# TLS / reverse proxy are handled by external infrastructure (not this stack).
+# WHAT YOU GET
+#   2 containers: MeteorPointer-DB + MeteorPointer-API. The API serves plain
+#   HTTP on :8000; your host/NAS proxy adds TLS in front of it. Django trusts the
+#   proxy's X-Forwarded-Proto header (SECURE_PROXY_SSL_HEADER).
+#
+# HOW TO USE
+#   1) cp .env.example .env   and fill in the "Common" + "Variant 1" sections.
+#   2) docker compose -f docker-compose.prod.yml up -d
+#   3) On your host/NAS proxy, route your domain -> this machine's API port
+#      (default 0.0.0.0:8000; set API_BIND=127.0.0.1:8000 to expose it only to a
+#      proxy running on this same host).
+#   Logs:  docker compose -f docker-compose.prod.yml logs -f api
+#   Stop:  docker compose -f docker-compose.prod.yml down
+#
+# For TLS handled INSIDE the stack instead, use docker-compose.tls.yml (Variant 2).
 
 name: meteorpointer
 
 x-api-env: &api-env
-  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set in .env}
   DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set in .env}
   DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+  DOMAIN: ${DOMAIN:-}
   JWT_SECRET: ${JWT_SECRET:?set in .env}
   POSTGRES_DB: ${POSTGRES_DB:-meteorpointer}
   POSTGRES_USER: ${POSTGRES_USER:-meteorpointer}
@@ -45,7 +63,9 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # Default 0.0.0.0:8000. Set API_BIND=127.0.0.1:8000 in .env so only a
+      # host proxy on this machine can reach the API.
+      - "${API_BIND:-8000}:8000"
     restart: unless-stopped
 
 volumes:
