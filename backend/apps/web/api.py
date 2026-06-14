@@ -57,6 +57,28 @@ class ReportRow(Schema):
     accuracy: float | None = None
 
 
+class TrailPoint(Schema):
+    alt: float | None = None
+    az: float | None = None
+    ra: float | None = None   # equatorial, degrees (for the star map)
+    dec: float | None = None
+
+
+class ReportDetail(Schema):
+    client_key: str
+    status: str
+    received_at: str
+    event_utc: str | None = None     # absolute instant
+    event_local: str | None = None   # civil time at the observing site
+    event_tz: str | None = None      # IANA zone resolved from the GPS site
+    quality: float | None = None
+    lat: float | None = None
+    lon: float | None = None
+    accuracy: float | None = None
+    start: TrailPoint = TrailPoint()
+    end: TrailPoint = TrailPoint()
+
+
 # ---- device flow ----
 
 @router.post("/device-code", response=DeviceCodeOut)
@@ -171,6 +193,57 @@ def reports(request):
             }
         )
     return out
+
+
+@router.get("/reports/{client_key}", auth=web_auth, response={200: ReportDetail, 404: dict})
+def report_detail(request, client_key: str):
+    """A single measurement, parsed into render-ready fields for the sky view.
+
+    Parses lazily on first view (parse-later) so it works without a worker; the
+    result is cached in ParsedMeasurement and reused thereafter.
+    """
+    from apps.ingest.parser import ensure_parsed
+
+    raw = request.web_device.raw_ingests.filter(client_key=client_key).first()
+    if raw is None:
+        return 404, {"detail": "Measurement not found"}
+
+    parsed = ensure_parsed(raw)
+    base = {
+        "client_key": raw.client_key,
+        "status": raw.status,
+        "received_at": raw.received_at.isoformat(),
+    }
+    if parsed is None:
+        return 200, base  # unparseable payload: status only, no render body
+
+    event_local = None
+    if parsed.event_time and parsed.event_tz:
+        try:
+            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+            event_local = parsed.event_time.astimezone(ZoneInfo(parsed.event_tz)).isoformat()
+        except (ZoneInfoNotFoundError, ValueError):
+            event_local = None
+
+    return 200, {
+        **base,
+        "event_utc": parsed.event_time.isoformat() if parsed.event_time else None,
+        "event_local": event_local,
+        "event_tz": parsed.event_tz or None,
+        "quality": parsed.quality,
+        "lat": parsed.lat,
+        "lon": parsed.lon,
+        "accuracy": parsed.accuracy,
+        "start": {
+            "alt": parsed.start_alt, "az": parsed.start_az,
+            "ra": parsed.start_ra, "dec": parsed.start_dec,
+        },
+        "end": {
+            "alt": parsed.end_alt, "az": parsed.end_az,
+            "ra": parsed.end_ra, "dec": parsed.end_dec,
+        },
+    }
 
 
 @router.post("/logout", auth=web_auth, response={200: dict})

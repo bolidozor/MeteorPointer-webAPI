@@ -41,3 +41,42 @@ class RawIngest(models.Model):
         ]
         indexes = [models.Index(fields=["status", "received_at"])]
         ordering = ["-received_at"]
+
+
+class ParsedMeasurement(models.Model):
+    """Render-ready record derived from a RawIngest (the parse-later output).
+
+    One row per raw measurement. Holds the validated horizontal coordinates of
+    the trail's two aim points, the derived equatorial coordinates (RA/Dec) for
+    plotting on a star map, the absolute UTC event time, the observing site, and
+    the site's IANA time zone. ``parse_version`` lets stored rows be re-derived
+    when the parsing logic changes.
+    """
+
+    raw = models.OneToOneField(
+        RawIngest, on_delete=models.CASCADE, related_name="parsed"
+    )
+    parse_version = models.PositiveIntegerField(default=0)
+
+    event_time = models.DateTimeField(null=True, blank=True)  # absolute UTC
+    event_tz = models.CharField(max_length=64, blank=True, default="")  # IANA name
+
+    start_alt = models.FloatField(null=True, blank=True)
+    start_az = models.FloatField(null=True, blank=True)
+    end_alt = models.FloatField(null=True, blank=True)
+    end_az = models.FloatField(null=True, blank=True)
+
+    start_ra = models.FloatField(null=True, blank=True)
+    start_dec = models.FloatField(null=True, blank=True)
+    end_ra = models.FloatField(null=True, blank=True)
+    end_dec = models.FloatField(null=True, blank=True)
+
+    lat = models.FloatField(null=True, blank=True)
+    lon = models.FloatField(null=True, blank=True)
+    accuracy = models.FloatField(null=True, blank=True)
+    quality = models.FloatField(null=True, blank=True)
+
+    parsed_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"ParsedMeasurement(raw={self.raw_id}, v{self.parse_version})"
