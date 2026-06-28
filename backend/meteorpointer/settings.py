@@ -48,18 +48,38 @@ CHALLENGE_TTL_SECONDS = int(os.environ.get("CHALLENGE_TTL_SECONDS", "300"))  # 5
 # --- Legal documents (consent / data license) ---
 LEGAL_DIR = Path(os.environ.get("LEGAL_DIR", REPO_DIR / "docs" / "legal"))
 
+# --- Web login (device flow) + session cookie (the API is its own BFF) ---
+WEB_LOGIN_TTL_SECONDS = int(os.environ.get("WEB_LOGIN_TTL_SECONDS", "600"))           # 10 min
+WEB_SESSION_TTL_SECONDS = int(os.environ.get("WEB_SESSION_TTL_SECONDS", str(7 * 24 * 3600)))
+WEB_COOKIE_NAME = "mp_web_session"
+WEB_COOKIE_SECURE = env_bool("WEB_COOKIE_SECURE", not DEBUG)
+WEB_COOKIE_SAMESITE = os.environ.get("WEB_COOKIE_SAMESITE", "Lax")
+
+# CORS — the web frontend calls the API from its own origin, with credentials.
+CORS_ALLOWED_ORIGINS = env_list("DJANGO_CORS_ORIGINS", "")
+CORS_ALLOW_CREDENTIALS = True
+# Convenience for local/LAN testing of the frontend container (served on :8080).
+CORS_ALLOWED_ORIGIN_REGEXES = env_list(
+    "DJANGO_CORS_ORIGIN_REGEXES",
+    r"^http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+):8080$",
+)
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
+    "corsheaders",
     "apps.core",
     "apps.devices",
     "apps.auth_api",
     "apps.ingest",
     "apps.legal",
+    "apps.web",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "apps.web.middleware.NoStoreWebMiddleware",
 ]
 
 ROOT_URLCONF = "meteorpointer.urls"
