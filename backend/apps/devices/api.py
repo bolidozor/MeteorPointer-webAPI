@@ -13,6 +13,7 @@ from .crypto import (
 )
 from .models import ConsentRecord, Device, RecoveryPhrase
 from .schemas import (
+    DeviceLabelIn,
     DeviceRecoverIn,
     DeviceRecoverOut,
     DeviceRegisterIn,
@@ -88,6 +89,20 @@ def recover_device(request, payload: DeviceRecoverIn):
         _record_consent(device, payload.consent)
 
     return 200, {"device_id": str(device.id)}
+
+
+@router.patch("/{device_id}/label", auth=device_auth, response={200: SimpleOk, 403: dict})
+def update_label(request, device_id: str, payload: DeviceLabelIn):
+    """Update the display name (label) of the calling device.
+
+    The label is shown publicly on the web as the observer name. It can be set
+    on registration/recovery and changed at any time via this endpoint.
+    """
+    if str(request.device.id) != device_id:
+        return 403, {"detail": "Can only update your own label"}
+    request.device.label = payload.label.strip()[:120]
+    request.device.save(update_fields=["label"])
+    return 200, SimpleOk()
 
 
 @router.post("/{device_id}/revoke", auth=device_auth, response={200: SimpleOk, 403: dict})

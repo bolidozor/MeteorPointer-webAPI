@@ -32,5 +32,9 @@ class DeviceRecoverOut(Schema):
     device_id: str
 
 
+class DeviceLabelIn(Schema):
+    label: str
+
+
 class SimpleOk(Schema):
     ok: bool = True
