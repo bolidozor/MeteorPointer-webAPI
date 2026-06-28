@@ -20,6 +20,8 @@
         about2: 'Data jsou automaticky odesílána do centrální databáze a slouží k vědecké analýze meteorů, určení jejich dráhy a původu. Každý příspěvek pomáhá síti lépe triangulovat polohu tělesa v atmosféře.',
         recentTitle: 'Poslední pozorování',
         count: '{n} záznamů',
+        appTitle: 'Kde získat aplikaci?',
+        appText: 'Aplikace je k dispozici pro <b>Android</b>. APK ke stažení: <a href="https://space.astro.cz/bolidozor/support/meteorpointer/app/" target="_blank" rel="noopener">space.astro.cz — MeteorPointer APK</a>.',
       },
       event: {
         back: '← Zpět',
@@ -78,6 +80,8 @@
         about2: 'Data are automatically sent to a central database and used for scientific analysis of meteors, trajectory reconstruction, and origin determination. Every contribution helps the network triangulate where the body entered the atmosphere.',
         recentTitle: 'Latest observations',
         count: '{n} records',
+        appTitle: 'Where to get the app?',
+        appText: 'The app is available for <b>Android</b>. Download the APK at: <a href="https://space.astro.cz/bolidozor/support/meteorpointer/app/" target="_blank" rel="noopener">space.astro.cz — MeteorPointer APK</a>.',
       },
       event: {
         back: '← Back',
