@@ -39,6 +39,13 @@
             return { ra: f.geometry.coordinates[0], dec: f.geometry.coordinates[1], props: f.properties };
           }),
         };
+        // Index constellation props by IAU abbreviation (e.g. "Ori") so the
+        // caption can show a localized full name for a detected constellation.
+        dataCache.byAbbr = {};
+        res[2].features.forEach(function (f) {
+          var k = (f.properties.desig || f.id || '').toLowerCase();
+          if (k) dataCache.byAbbr[k] = f.properties;
+        });
         return dataCache;
       }).catch(function () { dataCache = { stars: [], lines: [], names: [] }; return dataCache; });
     }
@@ -69,6 +76,13 @@
   ];
   function dirLabel(k) { return global.MPI18n ? global.MPI18n.t('dir.' + k) : k; }
   function constName(p) { var k = (global.MPI18n && global.MPI18n.lang === 'en') ? 'en' : 'cz'; return p[k] || p.en || p.name || ''; }
+  // Localized full constellation name for an IAU abbreviation (e.g. "Ori" ->
+  // "Orion"/"Orion"); falls back to the abbreviation until the data has loaded.
+  function constNameByAbbr(abbr) {
+    if (!abbr) return '';
+    var p = dataCache && dataCache.byAbbr && dataCache.byAbbr[String(abbr).toLowerCase()];
+    return p ? constName(p) : abbr;
+  }
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   function build(detail, data) {
@@ -211,6 +225,9 @@
       if (MeteorSky._detail !== detail) return;
       var host = document.getElementById('skymap'); if (host) bind(host);
       build(detail, data); reset(); paint();
+      // Names are now available; let the caption resolve localized constellation
+      // names (it may have rendered with bare abbreviations before the fetch).
+      if (typeof global.onSkyData === 'function') global.onSkyData(detail);
     });
     return true;
   }
@@ -226,5 +243,8 @@
     else { zoomAt(host.clientWidth / 2, act === 'in' ? 1.3 : 1 / 1.3); paint(); }
   });
 
-  global.MeteorSky = { render: render, redraw: redraw, refit: refit, _detail: null };
+  global.MeteorSky = {
+    render: render, redraw: redraw, refit: refit,
+    constNameByAbbr: constNameByAbbr, _detail: null,
+  };
 })(window);

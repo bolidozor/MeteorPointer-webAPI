@@ -81,16 +81,31 @@ async function selectReport(key, tr) {
 }
 
 function showSkyCaption(d) {
-  const cap = $('skyCaption');
   const rendered = d ? MeteorSky.render(d) : false;
-  if (!d) { cap.textContent = t('sky.pick'); return; }
-  if (!rendered) { cap.textContent = t('sky.noCoords'); return; }
+  if (!d) { $('skyCaption').textContent = t('sky.pick'); return; }
+  if (!rendered) { $('skyCaption').textContent = t('sky.noCoords'); return; }
+  renderCaptionText(d);
+}
+
+// Build just the caption text (no sky re-render), so it can be refreshed when
+// the sky data loads or the language changes without re-triggering the dome.
+function renderCaptionText(d) {
+  const cap = $('skyCaption');
   const tz = d.event_tz ? ` <span class="muted">(${d.event_tz})</span>` : '';
   const s = d.start, e = d.end;
   cap.innerHTML =
     `<b>${fmtLocal(d.event_local || d.event_utc)}</b>${tz}<br>` +
-    `<span class="muted">${t('sky.startLabel')}</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dek ${fmt(s.ra, 1)}° / ${fmt(s.dec, 1)}°<br>` +
-    `<span class="muted">${t('sky.endLabel')}</span> ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dek ${fmt(e.ra, 1)}° / ${fmt(e.dec, 1)}°`;
+    `<span class="muted">${t('sky.startLabel')}</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dek ${fmt(s.ra, 1)}° / ${fmt(s.dec, 1)}°${constSuffix(s)}<br>` +
+    `<span class="muted">${t('sky.endLabel')}</span> ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dek ${fmt(e.ra, 1)}° / ${fmt(e.dec, 1)}°${constSuffix(e)}`;
+}
+
+// "· in <Constellation>" suffix for a trail endpoint, when known. The full
+// localized name comes from the sky data; until that loads we show the bare
+// abbreviation, then refresh the caption via onSkyData once it is available.
+function constSuffix(pt) {
+  if (!pt || !pt.constellation) return '';
+  const name = window.MeteorSky ? MeteorSky.constNameByAbbr(pt.constellation) : pt.constellation;
+  return ` · <span class="muted">${t('sky.in')}</span> ${name}`;
 }
 
 let pollTimer = null;
@@ -120,6 +135,12 @@ async function startLogin() {
     }
   }, (interval || 2) * 1000);
 }
+
+// Sky data finished loading: re-render the caption so constellation
+// abbreviations are replaced by their localized full names.
+window.onSkyData = function (detail) {
+  if (selectedDetail && detail === selectedDetail) renderCaptionText(selectedDetail);
+};
 
 // Re-apply language-dependent dynamic content whenever the language changes.
 window.onI18nApplied = function () {
