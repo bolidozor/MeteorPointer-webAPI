@@ -49,6 +49,15 @@ class SettingsIn(Schema):
     language: str
 
 
+class LabelIn(Schema):
+    label: str
+
+
+class StatsOut(Schema):
+    total_reports: int
+    total_observers: int
+
+
 class ReportRow(Schema):
     id: str          # raw UUID — used by the FE to link to the event detail page
     client_key: str
@@ -78,6 +87,8 @@ class PublicReportRow(Schema):
     quality: float | None = None
     start_constellation: str | None = None
     end_constellation: str | None = None
+    lat: float | None = None   # GPS location of the observing site (for the home map)
+    lon: float | None = None
 
 
 class TrailPoint(Schema):
@@ -212,6 +223,15 @@ def update_settings(request, payload: SettingsIn):
     return _me_payload(device)
 
 
+@router.post("/label", auth=web_auth, response=MeOut)
+def update_label(request, payload: LabelIn):
+    """Update the observer's display name (label) shown on the public home page."""
+    device = request.web_device
+    device.label = payload.label.strip()[:120]
+    device.save(update_fields=["label"])
+    return _me_payload(device)
+
+
 @router.get("/reports", auth=web_auth, response=list[ReportRow])
 def reports(request):
     """The signed-in device's measurements — data for the frontend grid."""
@@ -335,9 +355,20 @@ def public_reports(request):
                 "quality": p.get("quality"),
                 "start_constellation": getattr(parsed, "start_constellation", "") or None,
                 "end_constellation": getattr(parsed, "end_constellation", "") or None,
+                "lat": (p.get("site") or {}).get("lat"),
+                "lon": (p.get("site") or {}).get("lon"),
             }
         )
     return out
+
+
+@router.get("/stats", response=StatsOut)
+def public_stats(request):
+    """Aggregate counts for the public home page statistics block."""
+    return {
+        "total_reports": RawIngest.objects.count(),
+        "total_observers": RawIngest.objects.values("device_id").distinct().count(),
+    }
 
 
 @router.get("/public-reports/{report_id}", response={200: ReportDetail, 404: dict})

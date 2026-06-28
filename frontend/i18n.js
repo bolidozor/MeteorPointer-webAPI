@@ -7,7 +7,7 @@
   var DICT = {
     cs: {
       about: 'O aplikaci', logout: 'Odhlásit',
-      nav: { myObs: 'Moje pozorování' },
+      nav: { home: 'Domů', myObs: 'Moje pozorování' },
       login: {
         button: 'Přihlásit',
         back: 'Zpět na pozorování',
@@ -22,10 +22,14 @@
         count: '{n} záznamů',
         appTitle: 'Kde získat aplikaci?',
         appText: 'Aplikace je k dispozici pro <b>Android</b>. APK ke stažení: <a href="https://space.astro.cz/bolidozor/support/meteorpointer/app/" target="_blank" rel="noopener">space.astro.cz — MeteorPointer APK</a>.',
+        statsTitle: 'Statistiky',
+        statReports: 'pozorování celkem',
+        statObservers: 'aktivních pozorovatelů',
       },
       event: {
         back: '← Zpět',
         title: 'Detail měření',
+        detail: 'Detail',
         loading: 'Načítám…',
         notFound: 'Měření nebylo nalezeno.',
         time: 'Čas události',
@@ -67,7 +71,7 @@
     },
     en: {
       about: 'About', logout: 'Sign out',
-      nav: { myObs: 'My observations' },
+      nav: { home: 'Home', myObs: 'My observations' },
       login: {
         button: 'Sign in',
         back: 'Back to observations',
@@ -82,10 +86,14 @@
         count: '{n} records',
         appTitle: 'Where to get the app?',
         appText: 'The app is available for <b>Android</b>. Download the APK at: <a href="https://space.astro.cz/bolidozor/support/meteorpointer/app/" target="_blank" rel="noopener">space.astro.cz — MeteorPointer APK</a>.',
+        statsTitle: 'Statistics',
+        statReports: 'total observations',
+        statObservers: 'active observers',
       },
       event: {
         back: '← Back',
         title: 'Measurement detail',
+        detail: 'Detail',
         loading: 'Loading…',
         notFound: 'Measurement not found.',
         time: 'Event time',

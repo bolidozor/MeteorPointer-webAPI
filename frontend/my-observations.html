@@ -25,15 +25,16 @@
       .langswitch button { border: 0; border-radius: 0; padding: 7px 11px; font-size: 13px; background: #2a2a34; color: #e6e6ea; cursor: pointer; }
       .langswitch button.active { background: #ff5a5a; color: #15151b; font-weight: 700; }
       .langswitch button:hover:not(.active) { background: #34343f; }
-      button {
+      button, .btn {
         background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46;
         border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+        text-decoration: none; display: inline-block;
       }
-      button:hover { background: #34343f; }
+      button:hover, .btn:hover { background: #34343f; }
 
       main { flex: 1; min-height: 0; display: flex; align-items: stretch; }
 
-      /* Login screen */
+      /* ---- Login screen ---- */
       #login {
         margin: auto; max-width: 460px; width: 100%; padding: 24px;
         background: #16161c; border: 1px solid #26262e; border-radius: 12px;
@@ -46,17 +47,32 @@
       .muted { color: #9a9aa6; font-size: 14px; }
       .status { margin-top: 10px; font-size: 14px; }
 
-      /* Observations list */
-      #app { flex: 1; overflow-y: auto; }
-      .list-inner { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
-      .list-inner p.intro { color: #9a9aa6; font-size: 14px; margin: 0 0 16px; }
+      /* ---- Signed-in: list (left) + sky (right) ---- */
+      #app { flex: 1; min-height: 0; display: flex; }
+      .col-grid { flex: none; max-width: 55%; overflow: auto; border-right: 1px solid #26262e; }
+      .grid-inner { padding: 16px 20px; }
+      .grid-inner p.intro { color: #9a9aa6; font-size: 13px; margin: 0 0 14px; }
+
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
-      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #0e0e12; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #23232b; white-space: nowrap; }
+      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #16161c; }
       td.num { font-variant-numeric: tabular-nums; }
       .pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #2a2a34; }
       tbody tr { cursor: pointer; }
-      tbody tr:hover td { background: #1c1c24; }
+      tbody tr:hover { background: #1c1c24; }
+      tbody tr.selected { background: #2a1622; }
+      tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 #ff5a5a; }
+
+      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+      .sky-head { flex: none; padding: 12px 20px; font-size: 12px; color: #9a9aa6; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1c1c24; }
+      #skymap { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+      .sky-zoom { position: absolute; top: 46px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+      .sky-zoom button { width: 34px; height: 34px; padding: 0; font-size: 18px; line-height: 1; opacity: 0.9; }
+      .sky-foot { flex: none; padding: 12px 20px; border-top: 1px solid #1c1c24; }
+      .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 8px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
+      .sky-caption { line-height: 1.5; font-size: 13px; }
 
       .hidden { display: none !important; }
     </style>
@@ -65,6 +81,7 @@
     <header>
       <h1><a href="index.html">METEOR<span class="accent">POINTER</span></a></h1>
       <div class="header-actions">
+        <a href="index.html" class="btn" data-i18n="nav.home">Domů</a>
         <div class="langswitch">
           <button data-lang="cs">CZ</button>
           <button data-lang="en">EN</button>
@@ -83,30 +100,50 @@
         <p class="status muted" id="loginStatus" data-i18n="login.waiting"></p>
       </section>
 
-      <!-- My observations list -->
+      <!-- My observations: list + sky dome -->
       <div id="app" class="hidden">
-        <div class="list-inner">
-          <p class="intro" id="myIntro"></p>
-          <table>
-            <thead>
-              <tr>
-                <th data-i18n="grid.received">Přijato</th>
-                <th data-i18n="grid.status">Stav</th>
-                <th data-i18n="grid.startAltAz">Start ALT/AZ</th>
-                <th data-i18n="grid.endAltAz">Konec ALT/AZ</th>
-                <th data-i18n="grid.quality">Kvalita</th>
-                <th data-i18n="grid.gps">GPS</th>
-                <th data-i18n="grid.acc">±m</th>
-              </tr>
-            </thead>
-            <tbody id="myRows"></tbody>
-          </table>
+        <div class="col-grid">
+          <div class="grid-inner">
+            <p class="intro" id="myIntro"></p>
+            <table>
+              <thead>
+                <tr>
+                  <th data-i18n="grid.received">Přijato</th>
+                  <th data-i18n="grid.status">Stav</th>
+                  <th data-i18n="grid.startAltAz">Start ALT/AZ</th>
+                  <th data-i18n="grid.endAltAz">Konec ALT/AZ</th>
+                  <th data-i18n="grid.quality">Kvalita</th>
+                  <th data-i18n="grid.gps">GPS</th>
+                  <th data-i18n="grid.acc">±m</th>
+                </tr>
+              </thead>
+              <tbody id="myRows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-sky">
+          <div class="sky-head" data-i18n="sky.head">Obloha v čase a místě měření</div>
+          <div class="sky-zoom">
+            <button data-zoom="in">+</button>
+            <button data-zoom="out">−</button>
+            <button data-zoom="reset">⟳</button>
+          </div>
+          <div id="skymap"></div>
+          <div class="sky-foot">
+            <div class="legend">
+              <span><span class="dot start"></span><span data-i18n="sky.start">začátek stopy</span></span>
+              <span><span class="dot end"></span><span data-i18n="sky.end">konec stopy</span></span>
+            </div>
+            <div class="sky-caption muted" id="skyCaption" data-i18n="sky.pick"></div>
+            <div class="muted" style="font-size:11px;margin-top:6px;opacity:.7" data-i18n="sky.hint"></div>
+          </div>
         </div>
       </div>
     </main>
 
     <script src="config.js"></script>
     <script src="i18n.js"></script>
+    <script src="sky.js"></script>
     <script src="my-obs.js"></script>
   </body>
 </html>
