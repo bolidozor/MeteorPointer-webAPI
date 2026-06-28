@@ -85,17 +85,40 @@
   }
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-  function build(detail, data) {
-    var lst = lstDeg(new Date(detail.event_utc), detail.lon), lat = detail.lat;
+  function buildSky(lat, lst, data) {
     var aa = function (ra, dec) { return radecToAltaz(ra, dec, lat, lst); };
-    model = {
+    return {
       stars: data.stars.map(function (s) { var p = aa(s.ra, s.dec); return { alt: p.alt, az: p.az, mag: s.mag }; }),
       lines: data.lines.map(function (ls) { return ls.map(function (pt) { var p = aa(pt[0], pt[1]); return [p.alt, p.az]; }); }),
       names: data.names.map(function (n) { var p = aa(n.ra, n.dec); return { alt: p.alt, az: p.az, props: n.props }; }),
-      start: { alt: detail.start.alt, az: detail.start.az },
-      end: { alt: detail.end.alt, az: detail.end.az },
+    };
+  }
+
+  function build(detail, data) {
+    var lst = lstDeg(new Date(detail.event_utc), detail.lon), lat = detail.lat;
+    var sky = buildSky(lat, lst, data);
+    model = {
+      stars: sky.stars, lines: sky.lines, names: sky.names,
+      trails: [{ start: { alt: detail.start.alt, az: detail.start.az }, end: { alt: detail.end.alt, az: detail.end.az } }],
       centerAz: meanAz(detail.start.az, detail.end.az),
     };
+  }
+
+  // Reference location for "show all" view (centre of Czech Republic).
+  var REF_LAT = 49.8, REF_LON = 15.5;
+
+  function buildAll(rows, data) {
+    var lst = lstDeg(new Date(), REF_LON);
+    var sky = buildSky(REF_LAT, lst, data);
+    var trails = [];
+    var azSum = 0, azCount = 0;
+    rows.forEach(function (r) {
+      if (r.start_alt == null || r.start_az == null || r.end_alt == null || r.end_az == null) return;
+      trails.push({ start: { alt: r.start_alt, az: r.start_az }, end: { alt: r.end_alt, az: r.end_az } });
+      azSum += r.start_az; azCount++;
+    });
+    var centerAz = azCount ? ((azSum / azCount) % 360 + 360) % 360 : 180;
+    model = { stars: sky.stars, lines: sky.lines, names: sky.names, trails: trails, centerAz: centerAz };
   }
 
   function geom() {
@@ -163,13 +186,15 @@
       var p = px(nm.alt, nm.az); if (!onx(p)) return;
       svg += '<text x="' + p[0].toFixed(1) + '" y="' + p[1].toFixed(1) + '" fill="#9fb6d6" font-size="11" text-anchor="middle" font-family="system-ui,sans-serif" opacity="0.85">' + esc(constName(nm.props)) + '</text>';
     });
-    // meteor trail
-    var a = px(model.start.alt, model.start.az), b = px(model.end.alt, model.end.az);
-    if (onx(a) || onx(b)) {
-      svg += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#ff3b3b" stroke-width="2.5" stroke-linecap="round"/>';
-      svg += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="5" fill="#5dff5d"/>';
-      svg += '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="5" fill="#ff3b3b"/>';
-    }
+    // meteor trail(s)
+    var multi = model.trails.length > 1;
+    model.trails.forEach(function (tr) {
+      var a = px(tr.start.alt, tr.start.az), b = px(tr.end.alt, tr.end.az);
+      if (!a || !b || (!onx(a) && !onx(b))) return;
+      svg += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#ff3b3b" stroke-width="' + (multi ? '1.8' : '2.5') + '" stroke-linecap="round" opacity="' + (multi ? '0.8' : '1') + '"/>';
+      svg += '<circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="' + (multi ? '3' : '5') + '" fill="#5dff5d" opacity="' + (multi ? '0.8' : '1') + '"/>';
+      svg += '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="' + (multi ? '3' : '5') + '" fill="#ff3b3b" opacity="' + (multi ? '0.8' : '1') + '"/>';
+    });
 
     // horizon line (straight, fixed) + cardinal marks
     svg += '<line x1="0" y1="' + baseY.toFixed(1) + '" x2="' + W + '" y2="' + baseY.toFixed(1) + '" stroke="#ff5a5a" stroke-width="1.8"/>';
@@ -225,12 +250,19 @@
       if (MeteorSky._detail !== detail) return;
       var host = document.getElementById('skymap'); if (host) bind(host);
       build(detail, data); reset(); paint();
-      // Names are now available; let the caption resolve localized constellation
-      // names (it may have rendered with bare abbreviations before the fetch).
       if (typeof global.onSkyData === 'function') global.onSkyData(detail);
     });
     return true;
   }
+
+  function renderAll(rows) {
+    MeteorSky._detail = null;
+    loadData().then(function (data) {
+      var host = document.getElementById('skymap'); if (host) bind(host);
+      buildAll(rows, data); reset(); paint();
+    });
+  }
+
   function redraw() { if (model) paint(); }
   function refit() { if (model) { reset(); paint(); } }
 
@@ -244,7 +276,7 @@
   });
 
   global.MeteorSky = {
-    render: render, redraw: redraw, refit: refit,
+    render: render, renderAll: renderAll, redraw: redraw, refit: refit,
     constNameByAbbr: constNameByAbbr,
     _zoomAt: zoomAt,
     _detail: null,

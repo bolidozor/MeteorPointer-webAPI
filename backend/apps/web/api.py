@@ -87,8 +87,6 @@ class PublicReportRow(Schema):
     quality: float | None = None
     start_constellation: str | None = None
     end_constellation: str | None = None
-    lat: float | None = None   # GPS location of the observing site (for the home map)
-    lon: float | None = None
 
 
 class TrailPoint(Schema):
@@ -262,12 +260,16 @@ def reports(request):
     return out
 
 
-def _detail_body(raw):
+def _detail_body(raw, *, public: bool = False):
     """Parse a raw measurement into the render-ready ReportDetail body.
 
     Parses lazily on first view (parse-later) so it works without a worker; the
     result is cached in ParsedMeasurement and reused thereafter. Shared by the
     per-device and the public detail endpoints.
+
+    When public=True, GPS coordinates are omitted (lat/lon/accuracy → None) to
+    protect observer privacy; the sky-map trail is still drawn from the stored
+    alt/az values, which don't require location data.
     """
     from apps.ingest.parser import ensure_parsed
 
@@ -295,9 +297,9 @@ def _detail_body(raw):
         "event_local": event_local,
         "event_tz": parsed.event_tz or None,
         "quality": parsed.quality,
-        "lat": parsed.lat,
-        "lon": parsed.lon,
-        "accuracy": parsed.accuracy,
+        "lat": None if public else parsed.lat,
+        "lon": None if public else parsed.lon,
+        "accuracy": None if public else parsed.accuracy,
         "start": {
             "alt": parsed.start_alt, "az": parsed.start_az,
             "ra": parsed.start_ra, "dec": parsed.start_dec,
@@ -355,8 +357,6 @@ def public_reports(request):
                 "quality": p.get("quality"),
                 "start_constellation": getattr(parsed, "start_constellation", "") or None,
                 "end_constellation": getattr(parsed, "end_constellation", "") or None,
-                "lat": (p.get("site") or {}).get("lat"),
-                "lon": (p.get("site") or {}).get("lon"),
             }
         )
     return out
@@ -380,7 +380,7 @@ def public_report_detail(request, report_id: str):
         raw = None  # malformed UUID -> treat as not found
     if raw is None:
         return 404, {"detail": "Measurement not found"}
-    return 200, _detail_body(raw)
+    return 200, _detail_body(raw, public=True)
 
 
 @router.post("/logout", auth=web_auth, response={200: dict})

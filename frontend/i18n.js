@@ -54,6 +54,7 @@
         noCoords: 'Měření nemá GPS souřadnice nebo čas — stopu na obloze nelze vykreslit.',
         startLabel: 'Start', endLabel: 'Konec', in: 'v souhvězdí',
         hint: 'Kolečkem přiblížíš, tažením posuneš, dvojklikem resetuješ pohled.',
+        allHint: 'Zobrazeny všechny trajektorie. Pozadí oblohy je orientační (referenční poloha střed ČR).',
       },
       dir: { N: 'S', NE: 'SV', E: 'V', SE: 'JV', S: 'J', SW: 'JZ', W: 'Z', NW: 'SZ' },
       about_box: {
@@ -118,6 +119,7 @@
         noCoords: 'This measurement has no GPS location or time — the trail cannot be drawn.',
         startLabel: 'Start', endLabel: 'End', in: 'in',
         hint: 'Scroll to zoom, drag to pan, double-click to reset the view.',
+        allHint: 'All trajectories shown. Sky background is approximate (reference: centre of Czech Republic).',
       },
       dir: { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SW: 'SW', W: 'W', NW: 'NW' },
       about_box: {

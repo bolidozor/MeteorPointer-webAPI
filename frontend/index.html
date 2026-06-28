@@ -7,15 +7,15 @@
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
-      html, body { height: 100%; }
       body {
         margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         background: #0e0e12; color: #e6e6ea;
-        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       }
       header {
-        flex: none; padding: 14px 22px; border-bottom: 1px solid #26262e;
+        position: sticky; top: 0; z-index: 100;
+        padding: 14px 22px; border-bottom: 1px solid #26262e;
         display: flex; align-items: center; justify-content: space-between;
+        background: #0e0e12;
       }
       header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
       header .accent { color: #ff5a5a; }
@@ -31,44 +31,61 @@
       }
       .btn:hover { background: #34343f; }
 
-      /* --- Intro strip (about + stats + app) --- */
-      .intro {
-        flex: none; overflow-y: auto; max-height: 38vh;
-        border-bottom: 1px solid #26262e;
-        padding: 18px 22px 14px;
-      }
-      .intro-cards { display: flex; gap: 14px; flex-wrap: wrap; }
+      .page { max-width: 1100px; margin: 0 auto; padding: 28px 22px 48px; }
+
+      /* About + stats row */
+      .top-cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
       .card {
         background: #16161c; border: 1px solid #26262e; border-radius: 12px;
-        padding: 16px 18px;
+        padding: 20px 22px;
       }
       .card-about { flex: 2; min-width: 260px; }
-      .card-about h2 { margin: 0 0 10px; font-size: 15px; }
-      .card-about p { margin: 0 0 7px; line-height: 1.6; color: #c8c8d2; font-size: 13px; }
+      .card-about h2 { margin: 0 0 12px; font-size: 16px; }
+      .card-about p { margin: 0 0 9px; line-height: 1.65; color: #c8c8d2; font-size: 13px; }
       .card-about p:last-child { margin-bottom: 0; }
       .card-about a { color: #7aa2ff; }
-      .card-stats { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 10px; }
+      .card-stats { flex: 1; min-width: 160px; display: flex; gap: 16px; align-items: center; justify-content: space-around; }
       .stat-box { text-align: center; }
-      .stat-num { font-size: 24px; font-weight: 800; color: #ff8a5a; font-variant-numeric: tabular-nums; }
-      .stat-lbl { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: .5px; }
+      .stat-num { font-size: 28px; font-weight: 800; color: #ff8a5a; font-variant-numeric: tabular-nums; }
+      .stat-lbl { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
 
-      /* --- Split area (table | sky) --- */
-      main { flex: 1; min-height: 0; display: flex; }
+      /* Sky map section */
+      .sky-section {
+        margin-bottom: 28px; background: #16161c; border: 1px solid #26262e; border-radius: 12px;
+        display: flex; flex-direction: column; overflow: hidden;
+      }
+      .sky-head {
+        padding: 12px 20px; font-size: 11px; color: #9a9aa6; letter-spacing: 1px;
+        text-transform: uppercase; border-bottom: 1px solid #1c1c24; flex: none;
+      }
+      .sky-body { position: relative; }
+      #skymap { width: 100%; height: 420px; overflow: hidden; }
+      .sky-zoom {
+        position: absolute; top: 10px; right: 12px;
+        display: flex; flex-direction: column; gap: 6px; z-index: 5;
+      }
+      .sky-zoom button {
+        width: 34px; height: 34px; padding: 0; font-size: 18px; line-height: 1;
+        background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46;
+        border-radius: 8px; cursor: pointer; opacity: 0.9;
+      }
+      .sky-zoom button:hover { background: #34343f; }
+      .sky-foot { padding: 10px 20px; border-top: 1px solid #1c1c24; }
+      .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 4px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
+      .sky-caption { font-size: 11px; color: #9a9aa6; opacity: .75; }
 
-      .col-left { flex: none; width: 46%; overflow-y: auto; border-right: 1px solid #26262e; }
-      .col-inner { padding: 16px 20px; }
-
-      .section-label { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
+      /* Observations table */
+      .section-label { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px; }
       #homeCount { color: #9a9aa6; font-size: 12px; margin-left: 8px; font-weight: normal; }
-
+      .table-wrap { background: #16161c; border: 1px solid #26262e; border-radius: 12px; overflow: hidden; }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
-      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #0e0e12; font-size: 12px; z-index: 1; }
+      th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
+      th { color: #9a9aa6; font-weight: 600; font-size: 12px; background: #16161c; }
       td.num { font-variant-numeric: tabular-nums; }
-      tbody tr { cursor: pointer; }
+      tbody tr { cursor: default; }
       tbody tr:hover { background: #1c1c24; }
-      tbody tr.selected { background: #2a1622; }
-      tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 #ff5a5a; }
 
       /* Detail icon */
       .detail-icon {
@@ -77,19 +94,6 @@
         transition: color .15s, background .15s;
       }
       .detail-icon:hover { color: #e6e6ea; background: #2a2a34; }
-
-      /* Sky map column */
-      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
-      .sky-head { flex: none; padding: 12px 20px; font-size: 12px; color: #9a9aa6; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1c1c24; }
-      #skymap { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
-      .sky-zoom { position: absolute; top: 46px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
-      .sky-zoom button { width: 34px; height: 34px; padding: 0; font-size: 18px; line-height: 1; background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46; border-radius: 8px; cursor: pointer; opacity: 0.9; }
-      .sky-zoom button:hover { background: #34343f; }
-      .sky-foot { flex: none; padding: 10px 20px; border-top: 1px solid #1c1c24; }
-      .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 6px; }
-      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
-      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
-      .sky-caption { line-height: 1.5; font-size: 13px; color: #9a9aa6; }
 
       .hidden { display: none !important; }
     </style>
@@ -107,9 +111,10 @@
       </div>
     </header>
 
-    <!-- Intro: about + stats (scrollable, compact) -->
-    <div class="intro">
-      <div class="intro-cards">
+    <div class="page">
+
+      <!-- About + stats -->
+      <div class="top-cards">
         <div class="card card-about">
           <h2>Co je <span style="color:#ff5a5a">MeteorPointer</span>?</h2>
           <p data-i18n="home.about1"></p>
@@ -127,49 +132,48 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Split: table left, sky dome right -->
-    <main>
-      <div class="col-left">
-        <div class="col-inner">
-          <p class="section-label">
-            <span data-i18n="home.recentTitle">Poslední pozorování</span>
-            <span id="homeCount"></span>
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th data-i18n="grid.received">Přijato</th>
-                <th data-i18n="grid.observer">Pozorovatel</th>
-                <th data-i18n="grid.constellation">Souhvězdí</th>
-                <th data-i18n="grid.quality">Kvalita</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="homeRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="col-sky">
+      <!-- Sky map: all trajectories -->
+      <div class="sky-section">
         <div class="sky-head" data-i18n="sky.head">Obloha v čase a místě měření</div>
-        <div class="sky-zoom">
-          <button data-zoom="in">+</button>
-          <button data-zoom="out">−</button>
-          <button data-zoom="reset">⟳</button>
+        <div class="sky-body">
+          <div id="skymap"></div>
+          <div class="sky-zoom">
+            <button data-zoom="in">+</button>
+            <button data-zoom="out">−</button>
+            <button data-zoom="reset">⟳</button>
+          </div>
         </div>
-        <div id="skymap"></div>
         <div class="sky-foot">
           <div class="legend">
             <span><span class="dot start"></span><span data-i18n="sky.start">začátek stopy</span></span>
             <span><span class="dot end"></span><span data-i18n="sky.end">konec stopy</span></span>
           </div>
-          <div class="sky-caption" id="skyCaption" data-i18n="sky.pick"></div>
-          <div class="sky-caption" style="font-size:11px;margin-top:4px;opacity:.7" data-i18n="sky.hint"></div>
+          <div class="sky-caption" data-i18n="sky.allHint"></div>
         </div>
       </div>
-    </main>
+
+      <!-- Observations table -->
+      <p class="section-label">
+        <span data-i18n="home.recentTitle">Poslední pozorování</span>
+        <span id="homeCount"></span>
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="grid.received">Přijato</th>
+              <th data-i18n="grid.observer">Pozorovatel</th>
+              <th data-i18n="grid.constellation">Souhvězdí</th>
+              <th data-i18n="grid.quality">Kvalita</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="homeRows"></tbody>
+        </table>
+      </div>
+
+    </div><!-- .page -->
 
     <script src="config.js"></script>
     <script src="i18n.js"></script>
