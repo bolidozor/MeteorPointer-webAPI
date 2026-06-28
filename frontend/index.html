@@ -4,21 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MeteorPointer</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
       :root { color-scheme: dark; }
       * { box-sizing: border-box; }
+      html, body { height: 100%; }
       body {
         margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         background: #0e0e12; color: #e6e6ea;
+        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       }
       header {
-        padding: 14px 22px; border-bottom: 1px solid #26262e;
+        flex: none; padding: 14px 22px; border-bottom: 1px solid #26262e;
         display: flex; align-items: center; justify-content: space-between;
-        position: sticky; top: 0; background: #0e0e12; z-index: 10;
       }
       header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
-      header h1 a { color: inherit; text-decoration: none; }
       header .accent { color: #ff5a5a; }
       .header-actions { display: flex; gap: 10px; align-items: center; }
       .langswitch { display: flex; border: 1px solid #3a3a46; border-radius: 8px; overflow: hidden; }
@@ -32,52 +31,72 @@
       }
       .btn:hover { background: #34343f; }
 
-      main { max-width: 900px; margin: 0 auto; padding: 32px 24px 64px; }
-
+      /* --- Intro strip (about + stats + app) --- */
+      .intro {
+        flex: none; overflow-y: auto; max-height: 38vh;
+        border-bottom: 1px solid #26262e;
+        padding: 18px 22px 14px;
+      }
+      .intro-cards { display: flex; gap: 14px; flex-wrap: wrap; }
       .card {
-        background: #16161c; border: 1px solid #26262e; border-radius: 14px;
-        padding: 28px 32px; margin-bottom: 28px;
+        background: #16161c; border: 1px solid #26262e; border-radius: 12px;
+        padding: 16px 18px;
       }
-      .card h2 { margin: 0 0 14px; font-size: 20px; }
-      .card p { margin: 0 0 10px; line-height: 1.65; color: #c8c8d2; font-size: 14px; }
-      .card p:last-child { margin-bottom: 0; }
-      .card a { color: #7aa2ff; }
-      .accent { color: #ff5a5a; }
+      .card-about { flex: 2; min-width: 260px; }
+      .card-about h2 { margin: 0 0 10px; font-size: 15px; }
+      .card-about p { margin: 0 0 7px; line-height: 1.6; color: #c8c8d2; font-size: 13px; }
+      .card-about p:last-child { margin-bottom: 0; }
+      .card-about a { color: #7aa2ff; }
+      .card-stats { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 10px; }
+      .stat-box { text-align: center; }
+      .stat-num { font-size: 24px; font-weight: 800; color: #ff8a5a; font-variant-numeric: tabular-nums; }
+      .stat-lbl { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: .5px; }
 
-      /* Stats */
-      .stats-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
-      .stat-box {
-        flex: 1; min-width: 120px; background: #0e0e12; border: 1px solid #26262e;
-        border-radius: 10px; padding: 16px 20px; text-align: center;
-      }
-      .stat-num { font-size: 32px; font-weight: 800; color: #ff8a5a; font-variant-numeric: tabular-nums; }
-      .stat-lbl { font-size: 12px; color: #9a9aa6; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+      /* --- Split area (table | sky) --- */
+      main { flex: 1; min-height: 0; display: flex; }
 
-      /* Observations section */
-      .section-head {
-        display: flex; align-items: baseline; justify-content: space-between;
-        margin-bottom: 14px;
-      }
-      .section-head h2 { margin: 0; font-size: 17px; }
-      .section-head .muted { color: #9a9aa6; font-size: 13px; }
+      .col-left { flex: none; width: 46%; overflow-y: auto; border-right: 1px solid #26262e; }
+      .col-inner { padding: 16px 20px; }
+
+      .section-label { font-size: 11px; color: #9a9aa6; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px; }
+      #homeCount { color: #9a9aa6; font-size: 12px; margin-left: 8px; font-weight: normal; }
 
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
-      th { color: #9a9aa6; font-weight: 600; }
+      th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
+      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #0e0e12; font-size: 12px; z-index: 1; }
       td.num { font-variant-numeric: tabular-nums; }
-      tbody tr:hover td { background: #1c1c24; cursor: pointer; }
-      .pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #2a2a34; }
-      .muted { color: #9a9aa6; font-size: 14px; }
+      tbody tr { cursor: pointer; }
+      tbody tr:hover { background: #1c1c24; }
+      tbody tr.selected { background: #2a1622; }
+      tbody tr.selected td:first-child { box-shadow: inset 3px 0 0 #ff5a5a; }
 
-      /* Map */
-      #obsMap { height: 340px; border-radius: 10px; margin-bottom: 28px; background: #12121a; }
+      /* Detail icon */
+      .detail-icon {
+        display: inline-block; color: #9a9aa6; font-size: 14px; line-height: 1;
+        text-decoration: none; padding: 2px 5px; border-radius: 4px;
+        transition: color .15s, background .15s;
+      }
+      .detail-icon:hover { color: #e6e6ea; background: #2a2a34; }
+
+      /* Sky map column */
+      .col-sky { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+      .sky-head { flex: none; padding: 12px 20px; font-size: 12px; color: #9a9aa6; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #1c1c24; }
+      #skymap { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+      .sky-zoom { position: absolute; top: 46px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+      .sky-zoom button { width: 34px; height: 34px; padding: 0; font-size: 18px; line-height: 1; background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46; border-radius: 8px; cursor: pointer; opacity: 0.9; }
+      .sky-zoom button:hover { background: #34343f; }
+      .sky-foot { flex: none; padding: 10px 20px; border-top: 1px solid #1c1c24; }
+      .legend { display: flex; gap: 16px; font-size: 12px; color: #c4c4cf; margin-bottom: 6px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+      .dot.start { background: #5dff5d; } .dot.end { background: #ff3b3b; }
+      .sky-caption { line-height: 1.5; font-size: 13px; color: #9a9aa6; }
 
       .hidden { display: none !important; }
     </style>
   </head>
   <body>
     <header>
-      <h1><a href="index.html">METEOR<span class="accent">POINTER</span></a></h1>
+      <h1>METEOR<span class="accent">POINTER</span></h1>
       <div class="header-actions">
         <div class="langswitch">
           <button data-lang="cs">CZ</button>
@@ -88,24 +107,16 @@
       </div>
     </header>
 
-    <main>
-      <!-- About -->
-      <div class="card">
-        <h2>Co je <span class="accent">MeteorPointer</span>?</h2>
-        <p data-i18n="home.about1"></p>
-        <p data-i18n="home.about2"></p>
-      </div>
-
-      <!-- Get the app -->
-      <div class="card">
-        <h2 data-i18n="home.appTitle">Kde získat aplikaci?</h2>
-        <p data-i18n-html="home.appText"></p>
-      </div>
-
-      <!-- Statistics -->
-      <div class="card">
-        <h2 data-i18n="home.statsTitle">Statistiky</h2>
-        <div class="stats-row">
+    <!-- Intro: about + stats (scrollable, compact) -->
+    <div class="intro">
+      <div class="intro-cards">
+        <div class="card card-about">
+          <h2>Co je <span style="color:#ff5a5a">MeteorPointer</span>?</h2>
+          <p data-i18n="home.about1"></p>
+          <p data-i18n="home.about2"></p>
+          <p data-i18n-html="home.appText"></p>
+        </div>
+        <div class="card card-stats">
           <div class="stat-box">
             <div class="stat-num" id="statReports">—</div>
             <div class="stat-lbl" data-i18n="home.statReports">pozorování</div>
@@ -116,32 +127,53 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Map of observations -->
-      <div class="section-head" style="margin-top:4px">
-        <h2 data-i18n="home.recentTitle">Poslední pozorování</h2>
-        <span class="muted" id="homeCount"></span>
+    <!-- Split: table left, sky dome right -->
+    <main>
+      <div class="col-left">
+        <div class="col-inner">
+          <p class="section-label">
+            <span data-i18n="home.recentTitle">Poslední pozorování</span>
+            <span id="homeCount"></span>
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="grid.received">Přijato</th>
+                <th data-i18n="grid.observer">Pozorovatel</th>
+                <th data-i18n="grid.constellation">Souhvězdí</th>
+                <th data-i18n="grid.quality">Kvalita</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="homeRows"></tbody>
+          </table>
+        </div>
       </div>
-      <div id="obsMap"></div>
 
-      <!-- Recent observations table -->
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="grid.received">Přijato</th>
-            <th data-i18n="grid.observer">Pozorovatel</th>
-            <th data-i18n="grid.constellation">Souhvězdí</th>
-            <th data-i18n="grid.quality">Kvalita</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="homeRows"></tbody>
-      </table>
+      <div class="col-sky">
+        <div class="sky-head" data-i18n="sky.head">Obloha v čase a místě měření</div>
+        <div class="sky-zoom">
+          <button data-zoom="in">+</button>
+          <button data-zoom="out">−</button>
+          <button data-zoom="reset">⟳</button>
+        </div>
+        <div id="skymap"></div>
+        <div class="sky-foot">
+          <div class="legend">
+            <span><span class="dot start"></span><span data-i18n="sky.start">začátek stopy</span></span>
+            <span><span class="dot end"></span><span data-i18n="sky.end">konec stopy</span></span>
+          </div>
+          <div class="sky-caption" id="skyCaption" data-i18n="sky.pick"></div>
+          <div class="sky-caption" style="font-size:11px;margin-top:4px;opacity:.7" data-i18n="sky.hint"></div>
+        </div>
+      </div>
     </main>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="config.js"></script>
     <script src="i18n.js"></script>
+    <script src="sky.js"></script>
     <script src="home.js"></script>
   </body>
 </html>

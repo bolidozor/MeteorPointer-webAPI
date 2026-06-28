@@ -1,4 +1,4 @@
-// Public home page: about + stats + map + compact recent observations.
+// Public home page: about + stats + observations + sky dome.
 const API = (window.API_BASE ?? '/api');
 const t = (k, v) => window.MPI18n.t(k, v);
 
@@ -18,47 +18,34 @@ function constCell(r) {
   return esc(a || b);
 }
 
-let map = null;
+let selectedTr = null;
 
-function initMap(rows) {
-  if (map) { map.remove(); map = null; }
+async function selectReport(id, tr) {
+  if (selectedTr) selectedTr.classList.remove('selected');
+  selectedTr = tr;
+  tr.classList.add('selected');
 
-  map = L.map('obsMap', {
-    center: [50, 15], zoom: 5,
-    zoomControl: true, attributionControl: true,
-  });
+  const captionEl = document.getElementById('skyCaption');
+  captionEl.textContent = t('sky.loading');
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd', maxZoom: 19,
-  }).addTo(map);
-
-  const points = [];
-  rows.forEach((r) => {
-    if (r.lat == null || r.lon == null) return;
-    points.push([r.lat, r.lon]);
-    const marker = L.circleMarker([r.lat, r.lon], {
-      radius: 6, fillColor: '#ff5a5a', color: '#ff8a8a',
-      weight: 1, opacity: 0.9, fillOpacity: 0.7,
-    }).addTo(map);
-    const cons = constCell(r);
-    const q = r.quality == null ? '—' : Math.round(r.quality * 100) + ' %';
-    marker.bindPopup(
-      `<b>${esc(r.observer)}</b><br>` +
-      `${new Date(r.received_at).toLocaleString()}<br>` +
-      `${cons} · ${q}<br>` +
-      `<a href="event.html?id=${encodeURIComponent(r.id)}" style="color:#7aa2ff">` +
-      `${t('event.detail')}</a>`
-    );
-  });
-
-  if (points.length) {
-    try { map.fitBounds(L.latLngBounds(points).pad(0.2)); } catch (_) {}
+  const res = await api(`/v1/web/public-reports/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    captionEl.textContent = t('sky.loadFail');
+    return;
   }
+  const d = await res.json();
+
+  if (!d.lat || !d.lon || !d.event_utc) {
+    captionEl.textContent = t('sky.noCoords');
+    return;
+  }
+
+  window.MeteorSky.render(d);
+  captionEl.textContent = '';
 }
 
 async function load() {
-  // Nav button: show "My observations" when already signed in.
+  // Nav: show "My observations" when signed in.
   const me = await api('/v1/web/me');
   if (me.ok) {
     document.getElementById('myObsBtn').classList.remove('hidden');
@@ -80,18 +67,34 @@ async function load() {
   document.getElementById('homeCount').textContent =
     rows.length ? t('home.count', { n: rows.length }) : '';
 
-  document.getElementById('homeRows').innerHTML = rows.slice(0, 20).map((r) =>
-    `<tr onclick="location.href='event.html?id=${encodeURIComponent(r.id)}'">
+  const tbody = document.getElementById('homeRows');
+  tbody.innerHTML = rows.slice(0, 20).map((r) => {
+    const id = encodeURIComponent(r.id);
+    const q = r.quality == null ? '—' : Math.round(r.quality * 100) + ' %';
+    return `<tr data-id="${esc(r.id)}">
       <td>${new Date(r.received_at).toLocaleString()}</td>
       <td>${esc(r.observer)}</td>
       <td>${constCell(r)}</td>
-      <td class="num">${r.quality == null ? '—' : Math.round(r.quality * 100) + ' %'}</td>
-      <td><a href="event.html?id=${encodeURIComponent(r.id)}" onclick="event.stopPropagation()"
-             style="color:#7aa2ff;font-size:12px" data-i18n="event.detail">${t('event.detail')}</a></td>
-    </tr>`
-  ).join('');
+      <td class="num">${q}</td>
+      <td><a href="event.html?id=${id}" class="detail-icon" title="${esc(t('event.detail'))}"
+             onclick="event.stopPropagation()">↗</a></td>
+    </tr>`;
+  }).join('');
 
-  initMap(rows);
+  tbody.querySelectorAll('tr').forEach((tr) => {
+    tr.addEventListener('click', () => selectReport(tr.dataset.id, tr));
+  });
+
+  // Zoom controls wire-up (sky.js exposes MeteorSky._zoomAt / redraw / refit).
+  document.querySelectorAll('[data-zoom]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-zoom');
+      if (action === 'reset') { window.MeteorSky.refit(); return; }
+      const el = document.getElementById('skymap');
+      const cx = el.clientWidth / 2, cy = el.clientHeight / 2;
+      window.MeteorSky._zoomAt(cx, cy, action === 'in' ? 1.4 : 1 / 1.4);
+    });
+  });
 }
 
 document.querySelectorAll('[data-lang]').forEach((btn) => {
