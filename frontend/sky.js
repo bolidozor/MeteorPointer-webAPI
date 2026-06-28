@@ -95,7 +95,9 @@
   }
 
   function build(detail, data) {
-    var lst = lstDeg(new Date(detail.event_utc), detail.lon), lat = detail.lat;
+    var lat = detail.lat != null ? detail.lat : REF_LAT;
+    var lon = detail.lon != null ? detail.lon : REF_LON;
+    var lst = lstDeg(new Date(detail.event_utc), lon);
     var sky = buildSky(lat, lst, data);
     model = {
       stars: sky.stars, lines: sky.lines, names: sky.names,
@@ -244,7 +246,7 @@
 
   function render(detail) {
     if (!detail || !detail.start || detail.start.alt == null || !detail.end || detail.end.alt == null ||
-        detail.lat == null || detail.lon == null || !detail.event_utc) return false;
+        !detail.event_utc) return false;
     MeteorSky._detail = detail;
     loadData().then(function (data) {
       if (MeteorSky._detail !== detail) return;

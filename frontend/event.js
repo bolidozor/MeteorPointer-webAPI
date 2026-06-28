@@ -52,8 +52,7 @@ function renderDetail(d) {
     row('RA / Dec', `<span class="num">${fmt(e.ra)}° / ${fmt(e.dec)}°</span>`) +
     row(t('grid.constellation'), eConst) +
     `<hr style="border:none;border-top:1px solid #26262e;margin:16px 0">` +
-    row(t('grid.quality'), d.quality == null ? '—' : `${Math.round(d.quality * 100)} %`) +
-    (d.lat != null ? row('GPS', `<span class="num">${fmt(d.lat, 5)}, ${fmt(d.lon, 5)}</span>`) : '');
+    row(t('grid.quality'), d.quality == null ? '—' : `${Math.round(d.quality * 100)} %`);
 }
 
 async function load() {

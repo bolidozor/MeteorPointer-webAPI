@@ -42,7 +42,7 @@ async function loadObs() {
   $('myIntro').textContent = t('myobs.intro', { device: m.device_id.slice(0, 8), n: rows.length });
 
   $('myRows').innerHTML = rows.map((r) =>
-    `<tr data-id="${encodeURIComponent(r.id)}">
+    `<tr data-id="${encodeURIComponent(r.id)}" data-key="${encodeURIComponent(r.client_key)}">
       <td>${new Date(r.received_at).toLocaleString()}</td>
       <td><span class="pill">${r.status}</span></td>
       <td class="num">${fmt(r.start_alt)}° / ${fmt(r.start_az)}°</td>
@@ -62,7 +62,10 @@ async function selectReport(id, tr) {
   if (tr) tr.classList.add('selected');
   $('skyCaption').textContent = t('sky.loading');
 
-  const res = await api('/v1/web/public-reports/' + id);
+  const key = tr ? decodeURIComponent(tr.dataset.key || '') : '';
+  const res = key
+    ? await api('/v1/web/reports/' + encodeURIComponent(key))
+    : await api('/v1/web/public-reports/' + encodeURIComponent(id));
   if (!res.ok) {
     selectedDetail = null;
     $('skyCaption').textContent = t('sky.loadFail');
@@ -82,10 +85,17 @@ function showSkyCaption(d) {
 function renderCaptionText(d) {
   const tz = d.event_tz ? ` <span class="muted">(${d.event_tz})</span>` : '';
   const s = d.start, e = d.end;
+  let gpsHtml = '';
+  if (d.lat != null && d.lon != null) {
+    const url = `https://mapy.com/zakladni?x=${d.lon}&y=${d.lat}&z=14&source=coor&id=${d.lon}%2C${d.lat}`;
+    gpsHtml = `<br><span class="muted">GPS</span> ${fmt(d.lat, 5)}, ${fmt(d.lon, 5)}` +
+      ` · <a href="${url}" target="_blank" rel="noopener" style="color:#7aa2ff">mapy.com ↗</a>`;
+  }
   $('skyCaption').innerHTML =
     `<b>${fmtLocal(d.event_local || d.event_utc)}</b>${tz}<br>` +
     `<span class="muted">${t('sky.startLabel')}</span> ALT/AZ ${fmt(s.alt)}° / ${fmt(s.az)}° · RA/Dec ${fmt(s.ra)}° / ${fmt(s.dec)}°${constSuffix(s)}<br>` +
-    `<span class="muted">${t('sky.endLabel')}</span>  ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dec ${fmt(e.ra)}° / ${fmt(e.dec)}°${constSuffix(e)}`;
+    `<span class="muted">${t('sky.endLabel')}</span>  ALT/AZ ${fmt(e.alt)}° / ${fmt(e.az)}° · RA/Dec ${fmt(e.ra)}° / ${fmt(e.dec)}°${constSuffix(e)}` +
+    gpsHtml;
 }
 
 window.onSkyData = function (detail) {
