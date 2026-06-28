@@ -14,7 +14,9 @@ async function api(path, opts = {}) {
 
 function show(section) {
   for (const id of ['login', 'app']) $(id).classList.toggle('hidden', id !== section);
-  $('logout').classList.toggle('hidden', section !== 'app');
+  // Header: "Sign out" only when signed in; "Sign in" only on the public home.
+  $('logout').classList.toggle('hidden', !loggedIn);
+  $('loginBtn').classList.toggle('hidden', loggedIn || section !== 'app');
 }
 
 function fmt(v, digits = 1) {
@@ -29,31 +31,39 @@ function fmtLocal(iso) {
   return m ? `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}` : iso;
 }
 
-let meData = null;        // { device_id, count }
+let loggedIn = false;      // whether a web session is active
+let homeCount = 0;         // number of observations shown on the home grid
 let selectedDetail = null; // last loaded measurement detail (for re-render)
 
-async function loadGrid() {
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// The home grid: every observer's latest measurements (public, no login).
+async function loadHome() {
   const me = await api('/v1/web/me');
-  if (!me.ok) return startLogin();
-  const m = await me.json();
-  if (window.MPI18n.supported(m.language)) {
-    window.MPI18n.setLang(m.language);
-    localStorage.setItem('mp_lang', m.language);
+  loggedIn = me.ok;
+  if (me.ok) {
+    const m = await me.json();
+    if (window.MPI18n.supported(m.language)) {
+      window.MPI18n.setLang(m.language);
+      localStorage.setItem('mp_lang', m.language);
+    }
   }
 
-  const res = await api('/v1/web/reports');
+  const res = await api('/v1/web/public-reports');
   const rows = res.ok ? await res.json() : [];
-  meData = { device_id: m.device_id.slice(0, 8), count: rows.length };
+  homeCount = rows.length;
   $('rows').innerHTML = rows
     .map(
-      (r) => `<tr data-key="${encodeURIComponent(r.client_key)}">
+      (r) => `<tr data-id="${esc(r.id)}">
         <td>${new Date(r.received_at).toLocaleString()}</td>
-        <td><span class="pill">${r.status}</span></td>
+        <td>${esc(r.observer)}</td>
         <td class="num">${fmt(r.start_alt)}° / ${fmt(r.start_az)}°</td>
         <td class="num">${fmt(r.end_alt)}° / ${fmt(r.end_az)}°</td>
+        <td>${constCell(r)}</td>
         <td class="num">${r.quality == null ? '—' : Math.round(r.quality * 100) + ' %'}</td>
-        <td class="num">${r.lat == null ? '—' : `${fmt(r.lat, 5)}, ${fmt(r.lon, 5)}`}</td>
-        <td class="num">${r.accuracy == null ? '—' : Math.round(r.accuracy)}</td>
       </tr>`,
     )
     .join('');
@@ -61,16 +71,24 @@ async function loadGrid() {
   show('app');
 }
 
+// Constellation cell: "A → B" when the trail crosses a boundary, else one name.
+function constCell(r) {
+  const a = r.start_constellation, b = r.end_constellation;
+  if (!a && !b) return '—';
+  if (a && b && a !== b) return `${esc(a)} → ${esc(b)}`;
+  return esc(a || b);
+}
+
 function refreshGridIntro() {
-  if (meData) $('gridIntro').textContent = t('grid.intro', { device: meData.device_id, n: meData.count });
+  $('gridIntro').textContent = t('grid.publicIntro', { n: homeCount });
 }
 
 // Click a row -> fetch the parsed detail -> draw the trail on the sky dome.
-async function selectReport(key, tr) {
+async function selectReport(id, tr) {
   document.querySelectorAll('#rows tr.selected').forEach((el) => el.classList.remove('selected'));
   if (tr) tr.classList.add('selected');
   $('skyCaption').textContent = t('sky.loading');
-  const res = await api('/v1/web/reports/' + key);
+  const res = await api('/v1/web/public-reports/' + encodeURIComponent(id));
   if (!res.ok) {
     selectedDetail = null;
     $('skyCaption').textContent = t('sky.loadFail');
@@ -128,12 +146,18 @@ async function startLogin() {
     const { status } = await r.json();
     if (status === 'authenticated') {
       clearInterval(pollTimer);
-      loadGrid();
+      loadHome();
     } else if (status === 'expired') {
       clearInterval(pollTimer);
       startLogin();
     }
   }, (interval || 2) * 1000);
+}
+
+// Leave the login screen without signing in, back to the public home.
+function cancelLogin() {
+  clearInterval(pollTimer);
+  loadHome();
 }
 
 // Sky data finished loading: re-render the caption so constellation
@@ -156,7 +180,7 @@ document.querySelectorAll('[data-lang]').forEach((btn) => {
     const lang = btn.getAttribute('data-lang');
     window.MPI18n.setLang(lang);
     localStorage.setItem('mp_lang', lang);
-    if (meData) {
+    if (loggedIn) {
       await api('/v1/web/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -169,8 +193,12 @@ document.querySelectorAll('[data-lang]').forEach((btn) => {
 // Row selection (event delegation).
 $('rows').addEventListener('click', (e) => {
   const tr = e.target.closest('tr');
-  if (tr && tr.dataset.key) selectReport(tr.dataset.key, tr);
+  if (tr && tr.dataset.id) selectReport(tr.dataset.id, tr);
 });
+
+// Header "Sign in" -> show the QR login; "Back" on the login screen -> home.
+$('loginBtn').addEventListener('click', startLogin);
+$('loginBack').addEventListener('click', cancelLogin);
 
 // About / licenses modal.
 $('about').addEventListener('click', () => $('aboutModal').classList.remove('hidden'));
@@ -181,9 +209,8 @@ $('aboutModal').addEventListener('click', (e) => {
 
 $('logout').addEventListener('click', async () => {
   await api('/v1/web/logout', { method: 'POST' });
-  meData = null;
-  selectedDetail = null;
-  startLogin();
+  loggedIn = false;
+  loadHome();
 });
 
 // Provisional language before we know the device setting: stored choice, else
@@ -195,5 +222,5 @@ $('logout').addEventListener('click', async () => {
   window.MPI18n.setLang(lang);
 })();
 
-// Start: if already logged in, show the grid; otherwise begin the login flow.
-loadGrid();
+// Start on the public home: everyone's observations, no login required.
+loadHome();

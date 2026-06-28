@@ -135,6 +135,27 @@ def test_report_detail_endpoint_returns_render_payload():
         assert body["event_tz"] == "Europe/Prague" and body["event_local"] is not None
 
 
+def test_public_reports_list_and_detail_need_no_auth():
+    client = Client()
+    device, _, _ = _device(client)
+    raw = RawIngest.objects.create(device=device, client_key="k1", payload=PAYLOAD)
+
+    listing = client.get("/v1/web/public-reports")  # no session cookie
+    assert listing.status_code == 200, listing.content
+    rows = listing.json()
+    assert len(rows) == 1
+    assert rows[0]["id"] == str(raw.id) and rows[0]["observer"]
+
+    detail = client.get(f"/v1/web/public-reports/{raw.id}")
+    assert detail.status_code == 200, detail.content
+    body = detail.json()
+    assert body["start"]["constellation"] and body["end"]["constellation"]
+
+
+def test_public_report_detail_bad_id_is_404():
+    assert Client().get("/v1/web/public-reports/not-a-uuid").status_code == 404
+
+
 def test_report_detail_unknown_key_is_404():
     fe, mobile = Client(), Client()
     device, device_id, priv = _device(mobile)

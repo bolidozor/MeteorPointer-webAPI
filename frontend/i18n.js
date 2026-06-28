@@ -8,14 +8,16 @@
     cs: {
       about: 'O aplikaci', logout: 'Odhlásit',
       login: {
+        button: 'Přihlásit',
+        back: 'Zpět na pozorování',
         heading: 'Přihlášení přes mobilní aplikaci',
         howto: 'V aplikaci klepni <b>Autorizovat web</b>, pak <b>Skenovat QR</b> a namiř na kód níže — nebo kód opiš ručně:',
         waiting: 'Čekám na potvrzení v aplikaci…',
       },
       grid: {
-        intro: 'Přihlášen jako zařízení {device} — {n} měření. Klepni na řádek pro zobrazení stopy na obloze.',
-        received: 'Přijato', status: 'Stav', startAltAz: 'Start ALT/AZ', endAltAz: 'Konec ALT/AZ',
-        quality: 'Kvalita', gps: 'GPS', acc: '±m',
+        publicIntro: 'Poslední pozorování meteorů ({n}). Klepni na řádek pro zobrazení stopy na obloze.',
+        received: 'Přijato', observer: 'Pozorovatel', startAltAz: 'Start ALT/AZ', endAltAz: 'Konec ALT/AZ',
+        constellation: 'Souhvězdí', quality: 'Kvalita',
       },
       sky: {
         head: 'Obloha v čase a místě měření',
@@ -44,14 +46,16 @@
     en: {
       about: 'About', logout: 'Sign out',
       login: {
+        button: 'Sign in',
+        back: 'Back to observations',
         heading: 'Sign in with the mobile app',
         howto: 'In the app tap <b>Authorize web login</b>, then <b>Scan QR</b> and aim at the code below — or type the code in manually:',
         waiting: 'Waiting for approval in the app…',
       },
       grid: {
-        intro: 'Signed in as device {device} — {n} measurement(s). Click a row to show the trail on the sky.',
-        received: 'Received', status: 'Status', startAltAz: 'Start ALT/AZ', endAltAz: 'End ALT/AZ',
-        quality: 'Quality', gps: 'GPS', acc: '±m',
+        publicIntro: 'Latest meteor observations ({n}). Click a row to show the trail on the sky.',
+        received: 'Received', observer: 'Observer', startAltAz: 'Start ALT/AZ', endAltAz: 'End ALT/AZ',
+        constellation: 'Constellation', quality: 'Quality',
       },
       sky: {
         head: 'Sky at the time & place of the measurement',

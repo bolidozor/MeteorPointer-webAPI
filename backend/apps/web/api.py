@@ -3,11 +3,13 @@ from datetime import timedelta
 
 import segno
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema
 
 from apps.auth_api.jwt import device_auth
+from apps.ingest.models import RawIngest
 
 from .auth import web_auth
 from .models import WebLogin, WebSession
@@ -60,6 +62,21 @@ class ReportRow(Schema):
     lat: float | None = None
     lon: float | None = None
     accuracy: float | None = None
+
+
+class PublicReportRow(Schema):
+    """One row of the public home grid — every observer's latest measurements."""
+    id: str
+    received_at: str
+    observer: str
+    status: str
+    start_alt: float | None = None
+    start_az: float | None = None
+    end_alt: float | None = None
+    end_az: float | None = None
+    quality: float | None = None
+    start_constellation: str | None = None
+    end_constellation: str | None = None
 
 
 class TrailPoint(Schema):
@@ -223,18 +240,14 @@ def reports(request):
     return out
 
 
-@router.get("/reports/{client_key}", auth=web_auth, response={200: ReportDetail, 404: dict})
-def report_detail(request, client_key: str):
-    """A single measurement, parsed into render-ready fields for the sky view.
+def _detail_body(raw):
+    """Parse a raw measurement into the render-ready ReportDetail body.
 
     Parses lazily on first view (parse-later) so it works without a worker; the
-    result is cached in ParsedMeasurement and reused thereafter.
+    result is cached in ParsedMeasurement and reused thereafter. Shared by the
+    per-device and the public detail endpoints.
     """
     from apps.ingest.parser import ensure_parsed
-
-    raw = request.web_device.raw_ingests.filter(client_key=client_key).first()
-    if raw is None:
-        return 404, {"detail": "Measurement not found"}
 
     parsed = ensure_parsed(raw)
     base = {
@@ -243,7 +256,7 @@ def report_detail(request, client_key: str):
         "received_at": raw.received_at.isoformat(),
     }
     if parsed is None:
-        return 200, base  # unparseable payload: status only, no render body
+        return base  # unparseable payload: status only, no render body
 
     event_local = None
     if parsed.event_time and parsed.event_tz:
@@ -254,7 +267,7 @@ def report_detail(request, client_key: str):
         except (ZoneInfoNotFoundError, ValueError):
             event_local = None
 
-    return 200, {
+    return {
         **base,
         "event_utc": parsed.event_time.isoformat() if parsed.event_time else None,
         "event_local": event_local,
@@ -274,6 +287,67 @@ def report_detail(request, client_key: str):
             "constellation": parsed.end_constellation or None,
         },
     }
+
+
+@router.get("/reports/{client_key}", auth=web_auth, response={200: ReportDetail, 404: dict})
+def report_detail(request, client_key: str):
+    """A single measurement of the signed-in device, for the sky view."""
+    raw = request.web_device.raw_ingests.filter(client_key=client_key).first()
+    if raw is None:
+        return 404, {"detail": "Measurement not found"}
+    return 200, _detail_body(raw)
+
+
+# ---- public home (no auth) ----
+
+def _observer_label(device):
+    """Public, non-identifying name for an observer device."""
+    return device.label or f"#{str(device.id)[:8]}"
+
+
+@router.get("/public-reports", response=list[PublicReportRow])
+def public_reports(request):
+    """Latest measurements across all observers — the public home grid.
+
+    Reads alt/az from the raw payload (cheap, no parse) and the constellation
+    from an already-parsed record when present; the per-row sky detail is parsed
+    lazily on click via /public-reports/{id}.
+    """
+    rows = RawIngest.objects.select_related("device", "parsed").all()[:100]
+    out = []
+    for r in rows:
+        p = r.payload or {}
+        start = p.get("startPoint") or {}
+        end = p.get("endPoint") or {}
+        parsed = getattr(r, "parsed", None)
+        out.append(
+            {
+                "id": str(r.id),
+                "received_at": r.received_at.isoformat(),
+                "observer": _observer_label(r.device),
+                "status": r.status,
+                "start_alt": start.get("alt"),
+                "start_az": start.get("az"),
+                "end_alt": end.get("alt"),
+                "end_az": end.get("az"),
+                "quality": p.get("quality"),
+                "start_constellation": getattr(parsed, "start_constellation", "") or None,
+                "end_constellation": getattr(parsed, "end_constellation", "") or None,
+            }
+        )
+    return out
+
+
+@router.get("/public-reports/{report_id}", response={200: ReportDetail, 404: dict})
+def public_report_detail(request, report_id: str):
+    """Render-ready detail of any measurement (public), keyed by its raw id."""
+    try:
+        raw = RawIngest.objects.select_related("device").filter(id=report_id).first()
+    except (ValueError, ValidationError):
+        raw = None  # malformed UUID -> treat as not found
+    if raw is None:
+        return 404, {"detail": "Measurement not found"}
+    return 200, _detail_body(raw)
 
 
 @router.post("/logout", auth=web_auth, response={200: dict})

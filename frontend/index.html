@@ -88,6 +88,7 @@
           <button data-lang="en">EN</button>
         </div>
         <button id="about" data-i18n="about">O aplikaci</button>
+        <button id="loginBtn" data-i18n="login.button">Přihlásit</button>
         <button id="logout" class="hidden" data-i18n="logout">Odhlásit</button>
       </div>
     </header>
@@ -100,6 +101,7 @@
         <div class="qrwrap"><div class="qrbox"><img id="qr" alt="QR" /></div></div>
         <div class="code" id="userCode">····-····</div>
         <p class="status muted" id="loginStatus" data-i18n="login.waiting"></p>
+        <p style="margin-top:18px"><button id="loginBack" data-i18n="login.back">Zpět na pozorování</button></p>
       </section>
 
       <!-- Grid + sky -->
@@ -111,12 +113,11 @@
               <thead>
                 <tr>
                   <th data-i18n="grid.received">Přijato</th>
-                  <th data-i18n="grid.status">Stav</th>
+                  <th data-i18n="grid.observer">Pozorovatel</th>
                   <th data-i18n="grid.startAltAz">Start ALT/AZ</th>
                   <th data-i18n="grid.endAltAz">Konec ALT/AZ</th>
+                  <th data-i18n="grid.constellation">Souhvězdí</th>
                   <th data-i18n="grid.quality">Kvalita</th>
-                  <th data-i18n="grid.gps">GPS</th>
-                  <th data-i18n="grid.acc">±m</th>
                 </tr>
               </thead>
               <tbody id="rows"></tbody>
