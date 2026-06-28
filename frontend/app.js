@@ -1,6 +1,9 @@
 // Minimal login-test frontend. The real frontend (framework, full UI) follows.
-// The API is assumed to run on the same host, port 8000.
-const API = `${location.protocol}//${location.hostname}:8000`;
+// API base is injected at build time via config.js (window.API_BASE). It must
+// NOT end with a slash. Default `/api` matches the production deployment, where
+// the proxy serves the API under :443/api/ and strips the /api prefix before
+// forwarding to the container. Dev (FE on :8080) overrides it to the API host.
+const API = (window.API_BASE ?? '/api');
 
 const $ = (id) => document.getElementById(id);
 

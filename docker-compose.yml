@@ -56,6 +56,10 @@ services:
     build:
       context: .
       dockerfile: docker/fe/Dockerfile
+      args:
+        # Dev: FE on :8080 talks to the API on :8000 directly (no /api prefix,
+        # no proxy). Production builds keep the default `/api`.
+        API_BASE: http://localhost:8000
     container_name: MeteorPointer-FE
     depends_on:
       - api
