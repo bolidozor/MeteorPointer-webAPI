@@ -41,3 +41,24 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Docker metadata for FE (tags + labels)
+        id: meta-fe
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/bolidozor/meteorpointer-fe
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push FE image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/fe/Dockerfile
+          push: true
+          tags: ${{ steps.meta-fe.outputs.tags }}
+          labels: ${{ steps.meta-fe.outputs.labels }}
