@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeteorPointer — Moje pozorování</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: #0e0e12; color: #e6e6ea;
+        display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      }
+      header {
+        flex: none; padding: 14px 22px; border-bottom: 1px solid #26262e;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      header h1 { font-size: 18px; margin: 0; letter-spacing: 2px; }
+      header h1 a { color: inherit; text-decoration: none; }
+      header .accent { color: #ff5a5a; }
+      .header-actions { display: flex; gap: 10px; align-items: center; }
+      .langswitch { display: flex; border: 1px solid #3a3a46; border-radius: 8px; overflow: hidden; }
+      .langswitch button { border: 0; border-radius: 0; padding: 7px 11px; font-size: 13px; background: #2a2a34; color: #e6e6ea; cursor: pointer; }
+      .langswitch button.active { background: #ff5a5a; color: #15151b; font-weight: 700; }
+      .langswitch button:hover:not(.active) { background: #34343f; }
+      button {
+        background: #2a2a34; color: #e6e6ea; border: 1px solid #3a3a46;
+        border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+      }
+      button:hover { background: #34343f; }
+
+      main { flex: 1; min-height: 0; display: flex; align-items: stretch; }
+
+      /* Login screen */
+      #login {
+        margin: auto; max-width: 460px; width: 100%; padding: 24px;
+        background: #16161c; border: 1px solid #26262e; border-radius: 12px;
+      }
+      #login h2 { margin: 0 0 12px; }
+      .code { font-size: 40px; font-weight: 800; letter-spacing: 6px; text-align: center; color: #ff8a5a; margin: 16px 0; font-variant-numeric: tabular-nums; }
+      .qrwrap { text-align: center; margin: 18px 0; }
+      .qrbox { background: #fff; padding: 16px; border-radius: 12px; display: inline-block; }
+      .qrbox img { display: block; width: 300px; height: 300px; image-rendering: pixelated; }
+      .muted { color: #9a9aa6; font-size: 14px; }
+      .status { margin-top: 10px; font-size: 14px; }
+
+      /* Observations list */
+      #app { flex: 1; overflow-y: auto; }
+      .list-inner { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
+      .list-inner p.intro { color: #9a9aa6; font-size: 14px; margin: 0 0 16px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1e1e26; white-space: nowrap; }
+      th { color: #9a9aa6; font-weight: 600; position: sticky; top: 0; background: #0e0e12; }
+      td.num { font-variant-numeric: tabular-nums; }
+      .pill { padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #2a2a34; }
+      tbody tr { cursor: pointer; }
+      tbody tr:hover td { background: #1c1c24; }
+
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><a href="index.html">METEOR<span class="accent">POINTER</span></a></h1>
+      <div class="header-actions">
+        <div class="langswitch">
+          <button data-lang="cs">CZ</button>
+          <button data-lang="en">EN</button>
+        </div>
+        <button id="logout" class="hidden" data-i18n="logout">Odhlásit</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Login (QR) -->
+      <section id="login" class="hidden">
+        <h2 data-i18n="login.heading">Přihlášení přes mobilní aplikaci</h2>
+        <p class="muted" data-i18n-html="login.howto"></p>
+        <div class="qrwrap"><div class="qrbox"><img id="qr" alt="QR" /></div></div>
+        <div class="code" id="userCode">····-····</div>
+        <p class="status muted" id="loginStatus" data-i18n="login.waiting"></p>
+      </section>
+
+      <!-- My observations list -->
+      <div id="app" class="hidden">
+        <div class="list-inner">
+          <p class="intro" id="myIntro"></p>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="grid.received">Přijato</th>
+                <th data-i18n="grid.status">Stav</th>
+                <th data-i18n="grid.startAltAz">Start ALT/AZ</th>
+                <th data-i18n="grid.endAltAz">Konec ALT/AZ</th>
+                <th data-i18n="grid.quality">Kvalita</th>
+                <th data-i18n="grid.gps">GPS</th>
+                <th data-i18n="grid.acc">±m</th>
+              </tr>
+            </thead>
+            <tbody id="myRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="i18n.js"></script>
+    <script src="my-obs.js"></script>
+  </body>
+</html>

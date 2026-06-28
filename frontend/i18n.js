@@ -7,6 +7,7 @@
   var DICT = {
     cs: {
       about: 'O aplikaci', logout: 'Odhlásit',
+      nav: { myObs: 'Moje pozorování' },
       login: {
         button: 'Přihlásit',
         back: 'Zpět na pozorování',
@@ -14,10 +15,29 @@
         howto: 'V aplikaci klepni <b>Autorizovat web</b>, pak <b>Skenovat QR</b> a namiř na kód níže — nebo kód opiš ručně:',
         waiting: 'Čekám na potvrzení v aplikaci…',
       },
+      home: {
+        about1: 'MeteorPointer je mobilní aplikace a webová platforma sítě Bolidozor pro vizuální pozorování meteorů. Pozorovatel namíří telefon na začátek a konec stopy meteoru — aplikace zaznamená směry ve hvězdné mapě, čas události a GPS polohu.',
+        about2: 'Data jsou automaticky odesílána do centrální databáze a slouží k vědecké analýze meteorů, určení jejich dráhy a původu. Každý příspěvek pomáhá síti lépe triangulovat polohu tělesa v atmosféře.',
+        recentTitle: 'Poslední pozorování',
+        count: '{n} záznamů',
+      },
+      event: {
+        back: '← Zpět',
+        title: 'Detail měření',
+        loading: 'Načítám…',
+        notFound: 'Měření nebylo nalezeno.',
+        time: 'Čas události',
+        status: 'Stav',
+        observer: 'Pozorovatel',
+      },
+      myobs: {
+        intro: 'Přihlášen jako zařízení {device} — {n} měření. Klepnutím otevřeš detail měření.',
+      },
       grid: {
         publicIntro: 'Poslední pozorování meteorů ({n}). Klepni na řádek pro zobrazení stopy na obloze.',
-        received: 'Přijato', observer: 'Pozorovatel', startAltAz: 'Start ALT/AZ', endAltAz: 'Konec ALT/AZ',
-        constellation: 'Souhvězdí', quality: 'Kvalita',
+        received: 'Přijato', observer: 'Pozorovatel', status: 'Stav',
+        startAltAz: 'Start ALT/AZ', endAltAz: 'Konec ALT/AZ',
+        constellation: 'Souhvězdí', quality: 'Kvalita', gps: 'GPS', acc: '±m',
       },
       sky: {
         head: 'Obloha v čase a místě měření',
@@ -45,6 +65,7 @@
     },
     en: {
       about: 'About', logout: 'Sign out',
+      nav: { myObs: 'My observations' },
       login: {
         button: 'Sign in',
         back: 'Back to observations',
@@ -52,10 +73,29 @@
         howto: 'In the app tap <b>Authorize web login</b>, then <b>Scan QR</b> and aim at the code below — or type the code in manually:',
         waiting: 'Waiting for approval in the app…',
       },
+      home: {
+        about1: 'MeteorPointer is the mobile app and web platform of the Bolidozor meteor observation network. An observer points their phone at the start and end of a meteor trail — the app records the directions in the star map, the event time, and the GPS location.',
+        about2: 'Data are automatically sent to a central database and used for scientific analysis of meteors, trajectory reconstruction, and origin determination. Every contribution helps the network triangulate where the body entered the atmosphere.',
+        recentTitle: 'Latest observations',
+        count: '{n} records',
+      },
+      event: {
+        back: '← Back',
+        title: 'Measurement detail',
+        loading: 'Loading…',
+        notFound: 'Measurement not found.',
+        time: 'Event time',
+        status: 'Status',
+        observer: 'Observer',
+      },
+      myobs: {
+        intro: 'Signed in as device {device} — {n} measurement(s). Click a row to open the detail.',
+      },
       grid: {
         publicIntro: 'Latest meteor observations ({n}). Click a row to show the trail on the sky.',
-        received: 'Received', observer: 'Observer', startAltAz: 'Start ALT/AZ', endAltAz: 'End ALT/AZ',
-        constellation: 'Constellation', quality: 'Quality',
+        received: 'Received', observer: 'Observer', status: 'Status',
+        startAltAz: 'Start ALT/AZ', endAltAz: 'End ALT/AZ',
+        constellation: 'Constellation', quality: 'Quality', gps: 'GPS', acc: '±m',
       },
       sky: {
         head: 'Sky at the time & place of the measurement',

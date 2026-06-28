@@ -50,6 +50,7 @@ class SettingsIn(Schema):
 
 
 class ReportRow(Schema):
+    id: str          # raw UUID — used by the FE to link to the event detail page
     client_key: str
     received_at: str
     status: str
@@ -223,6 +224,7 @@ def reports(request):
         site = p.get("site") or {}
         out.append(
             {
+                "id": str(r.id),
                 "client_key": r.client_key,
                 "received_at": r.received_at.isoformat(),
                 "status": r.status,

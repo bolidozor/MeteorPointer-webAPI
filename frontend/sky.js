@@ -245,6 +245,8 @@
 
   global.MeteorSky = {
     render: render, redraw: redraw, refit: refit,
-    constNameByAbbr: constNameByAbbr, _detail: null,
+    constNameByAbbr: constNameByAbbr,
+    _zoomAt: zoomAt,
+    _detail: null,
   };
 })(window);
