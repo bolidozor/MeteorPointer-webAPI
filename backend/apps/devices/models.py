@@ -14,6 +14,10 @@ class Device(models.Model):
     public_key = models.TextField()  # base64, raw Ed25519 public key (32 bytes)
     label = models.CharField(max_length=120, blank=True, default="")
 
+    # Preferred web-frontend language for this device (a per-device setting,
+    # stored server-side so it follows the device across browsers).
+    fe_language = models.CharField(max_length=5, blank=True, default="cs")
+
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
