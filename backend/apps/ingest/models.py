@@ -71,6 +71,10 @@ class ParsedMeasurement(models.Model):
     end_ra = models.FloatField(null=True, blank=True)
     end_dec = models.FloatField(null=True, blank=True)
 
+    # IAU constellation (3-letter abbreviation) each trail endpoint falls in.
+    start_constellation = models.CharField(max_length=3, blank=True, default="")
+    end_constellation = models.CharField(max_length=3, blank=True, default="")
+
     lat = models.FloatField(null=True, blank=True)
     lon = models.FloatField(null=True, blank=True)
     accuracy = models.FloatField(null=True, blank=True)

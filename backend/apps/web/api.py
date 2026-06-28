@@ -67,6 +67,7 @@ class TrailPoint(Schema):
     az: float | None = None
     ra: float | None = None   # equatorial, degrees (for the star map)
     dec: float | None = None
+    constellation: str | None = None  # IAU 3-letter abbreviation (e.g. "Ori")
 
 
 class ReportDetail(Schema):
@@ -265,10 +266,12 @@ def report_detail(request, client_key: str):
         "start": {
             "alt": parsed.start_alt, "az": parsed.start_az,
             "ra": parsed.start_ra, "dec": parsed.start_dec,
+            "constellation": parsed.start_constellation or None,
         },
         "end": {
             "alt": parsed.end_alt, "az": parsed.end_az,
             "ra": parsed.end_ra, "dec": parsed.end_dec,
+            "constellation": parsed.end_constellation or None,
         },
     }
 

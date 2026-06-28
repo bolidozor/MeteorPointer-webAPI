@@ -7,6 +7,7 @@ from django.test import Client
 
 from apps.devices.models import Device
 from apps.ingest import parser
+from apps.ingest.constellation import constellation_abbr
 from apps.ingest.models import RawIngest
 from tests.test_auth_sync import _register, _token
 
@@ -59,6 +60,24 @@ def test_altaz_to_radec_without_location_is_none():
     assert parser.altaz_to_radec(40, 90, None, None, when) is None
 
 
+@pytest.mark.parametrize(
+    "ra,dec,abbr",
+    [
+        (88.79, 7.41, "Ori"),    # Betelgeuse
+        (37.95, 89.26, "UMi"),   # Polaris
+        (279.23, 38.78, "Lyr"),  # Vega
+        (101.29, -16.72, "CMa"), # Sirius
+        (247.35, -26.43, "Sco"), # Antares
+    ],
+)
+def test_constellation_for_known_stars(ra, dec, abbr):
+    assert constellation_abbr(ra, dec) == abbr
+
+
+def test_constellation_missing_coords_is_none():
+    assert constellation_abbr(None, None) is None
+
+
 # ---- persistence + endpoint ----
 
 def _device(client):
@@ -90,6 +109,7 @@ def test_parse_and_store_creates_record():
     parsed = parser.parse_and_store(raw)
 
     assert parsed.start_ra is not None and parsed.end_dec is not None
+    assert parsed.start_constellation and parsed.end_constellation  # 3-letter IAU abbr
     assert parsed.event_time is not None and parsed.parse_version == parser.PARSE_VERSION
     raw.refresh_from_db()
     assert raw.status == RawIngest.STATUS_PROCESSED
@@ -108,6 +128,7 @@ def test_report_detail_endpoint_returns_render_payload():
     body = res.json()
     assert body["status"] == "processed"
     assert body["start"]["alt"] == 40.0 and body["start"]["ra"] is not None
+    assert body["start"]["constellation"] and body["end"]["constellation"]
     assert body["end"]["az"] == 95.0
     assert body["event_utc"] is not None
     if _HAS_TZF:

@@ -23,8 +23,11 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime
 
+from .constellation import constellation_abbr
+
 # Bump when the parsing logic changes so stored records can be re-derived.
-PARSE_VERSION = 1
+# v2: added start/end IAU constellation.
+PARSE_VERSION = 2
 
 
 class ParseError(ValueError):
@@ -191,6 +194,9 @@ def parse_and_store(raw):
     data = dict(fields)
     data["start_ra"], data["start_dec"] = start or (None, None)
     data["end_ra"], data["end_dec"] = end or (None, None)
+    # Constellation each endpoint falls in (needs the derived RA/Dec).
+    data["start_constellation"] = constellation_abbr(data["start_ra"], data["start_dec"]) or ""
+    data["end_constellation"] = constellation_abbr(data["end_ra"], data["end_dec"]) or ""
     # UTC is already absolute (epoch ms); resolve the site's civil time zone so
     # the observer's local time can be shown alongside it.
     data["event_tz"] = site_timezone(fields["lat"], fields["lon"]) or ""
